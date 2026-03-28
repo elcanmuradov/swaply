@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ApiResponse> handleAuthException(AuthException e){
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.status(401).body(ApiResponse.fail(e.getMessage()));
     }
 
 }
