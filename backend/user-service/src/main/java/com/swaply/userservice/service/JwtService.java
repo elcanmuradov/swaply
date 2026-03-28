@@ -63,7 +63,7 @@ public class JwtService {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return null;
         }
-        return authorizationHeader.substring(7); // "Bearer " (7 simvol) silir
+        return authorizationHeader.substring(7);
     }
 
     private Key getKey() {

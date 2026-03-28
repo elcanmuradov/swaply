@@ -1,8 +1,8 @@
 package com.swaply.productservice.mapper;
 
+import com.swaply.productservice.document.ProductDocument;
 import com.swaply.productservice.dto.ProductDto;
 import com.swaply.productservice.dto.UpdateProductRequest;
-import com.swaply.productservice.dto.create.CreateProductRequest;
 import com.swaply.productservice.entity.Product;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -26,19 +26,6 @@ public interface ProductMapper {
                 .map(img -> img.getImageUrl())
                 .collect(Collectors.toList());
     }
-
-    @Mapping(target = "isNew", ignore = true)
-    @Mapping(target = "isDelivery", ignore = true)
-    @Mapping(target = "images", ignore = true)
-    Product toEntity(ProductDto productDto);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "status", ignore = true)
-    @Mapping(target = "viewers", ignore = true)
-    @Mapping(target = "images", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "updatedAt", ignore = true)
-    Product toEntity(CreateProductRequest createProductRequest);
 
 
 

@@ -175,7 +175,6 @@ services:
     environment:
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
-      MAIL_HOST: mailhog
       SPRING_PROFILES_ACTIVE: docker
     restart: unless-stopped
     networks: [ microservices-net ]
@@ -239,16 +238,6 @@ services:
       - "8081:8081"
     depends_on:
       - redis
-    networks:
-      - microservices-net
-
-  # ==================== MAILHOG ====================
-  mailhog:
-    image: mailhog/mailhog
-    container_name: microservices-mailhog
-    ports:
-      - "1025:1025"
-      - "8025:8025"
     networks:
       - microservices-net
 

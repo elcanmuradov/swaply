@@ -11,7 +11,7 @@ import java.util.List;
 @Repository
 public interface ElasticProductRepository extends ElasticsearchRepository<ProductDocument, String> {
 
-    @Query("{\"bool\": {\"must\": [{\"match\": {\"status\": \"ACTIVE\"}}, {\"multi_match\": {\"query\": \"?0\", \"fields\": [\"title\", \"description\"]}}]}}")
+    @Query("{\"bool\": {\"filter\": [{\"term\": {\"status\": \"ACTIVE\"}}], \"must\": [{\"query_string\": {\"query\": \"*?0*\", \"fields\": [\"title\", \"description\"], \"default_operator\": \"AND\"}}]}}")
     List<ProductDocument> searchActiveProducts(String query);
 
     List<ProductDocument> findByStatusAndTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(ProductStatus status, String title, String description);

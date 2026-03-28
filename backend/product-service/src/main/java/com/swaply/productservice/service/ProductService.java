@@ -25,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -229,20 +230,29 @@ public class ProductService {
     public List<ProductDto> searchProducts(String query) {
         log.info("Searching products with ElasticSearch, query: {}", query);
         List<ProductDocument> results = elasticProductRepository.searchActiveProducts(query);
-        return results.stream()
-                .map(doc -> ProductDto.builder()
-                        .id(UUID.fromString(doc.getId()))
-                        .title(doc.getTitle())
-                        .price(doc.getPrice() != null ? doc.getPrice().doubleValue() : 0.0)
-                        .category(doc.getCategory())
-                        .city(doc.getCity())
-                        .createdAt(doc.getCreatedAt() != null ? new java.sql.Timestamp(doc.getCreatedAt()) : null)
-                        .status(doc.getStatus())
-                        .build())
-                .collect(Collectors.toList());
+        List<ProductDto> products = new ArrayList<>();
+        results.forEach(product -> products.add(documentToDto(product)));
+        return products;
     }
 
-    private void syncToElastic(Product product) {
+    public ProductDto documentToDto(ProductDocument doc) {
+        return ProductDto.builder()
+                .id(doc.getId() != null ? UUID.fromString(doc.getId()) : null)
+                .userId(doc.getUserId() != null ? UUID.fromString(doc.getUserId()) : null)
+                .title(doc.getTitle())
+                .description(doc.getDescription())
+                .price(doc.getPrice())
+                .isNew(doc.getIsNew() != null ? doc.getIsNew() : false)
+                .isDelivery(doc.getIsDelivery() != null ? doc.getIsDelivery() : false)
+                .category(doc.getCategory())
+                .createdAt(doc.getCreatedAt() != null ? new Date(doc.getCreatedAt()) : null)
+                .city(doc.getCity())
+                .status(doc.getStatus())
+                .imageUrls(doc.getImageUrls())
+                .build();
+    }
+
+    public void syncToElastic(Product product) {
         try {
             ProductDocument doc = ProductDocument.builder()
                     .id(product.getId().toString())
@@ -254,8 +264,10 @@ public class ProductService {
                     .city(product.getCity())
                     .status(product.getStatus())
                     .isNew(product.getIsNew())
+                    .isDelivery(product.getIsDelivery())
                     .createdAt(product.getCreatedAt() != null ? 
                         product.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
+                    .imageUrls(product.getImages().stream().map(ProductImage::getImageUrl).collect(Collectors.toList()))
                     .build();
             elasticProductRepository.save(doc);
         } catch (Exception e) {

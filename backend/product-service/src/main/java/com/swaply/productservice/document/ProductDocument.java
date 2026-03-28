@@ -24,7 +24,7 @@ import java.util.UUID;
 public class ProductDocument {
 
     @Id
-    private String id; // ES uses string IDs usually
+    private String id;
 
     @Field(type = FieldType.Keyword)
     private String userId;
@@ -52,4 +52,10 @@ public class ProductDocument {
 
     @Field(type = FieldType.Long)
     private Long createdAt;
+
+    @Field(type = FieldType.Keyword)
+    private java.util.List<String> imageUrls;
+
+    @Field(type = FieldType.Boolean)
+    private Boolean isDelivery;
 }
