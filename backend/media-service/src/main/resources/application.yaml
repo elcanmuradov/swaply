@@ -2,7 +2,7 @@ spring:
   application:
     name: media-service
   datasource:
-    url: jdbc:postgresql://postgres:5432/media-service
+    url: jdbc:postgresql://postgres:5432/media_service
     username: admin
     password: secret123
   servlet:

@@ -1,5 +1,5 @@
 services:
-  # ==================== POSTGRESQL (MERKEZİ) ====================
+  # ==================== POSTGRESQL ====================
   postgres:
     image: postgres:16-alpine
     container_name: microservices-postgres
@@ -11,11 +11,11 @@ services:
       - "5436:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./product-service/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+      - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
     networks:
       - microservices-net
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U admin -d postgres" ]
+      test: [ "CMD-SHELL", "pg_isready -U admin -d admin" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -72,21 +72,21 @@ services:
     networks:
       - microservices-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'" ]
       interval: 20s
       timeout: 10s
       retries: 5
 
   # ==================== USER SERVICE ====================
   user-service:
-    build: ./user-service
+    build: ./backend/user-service
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: user-service
+      POSTGRES_DB: user_service
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: secret123
       SPRING_DATA_REDIS_HOST: redis
@@ -100,11 +100,11 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 40s
+      start_period: 60s
 
   # ==================== PRODUCT SERVICE ====================
   product-service:
-    build: ./product-service
+    build: ./backend/product-service
     depends_on:
       postgres: { condition: service_healthy }
       media-service: { condition: service_healthy }
@@ -113,7 +113,7 @@ services:
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: product-service
+      POSTGRES_DB: product_service
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: secret123
       SPRING_PROFILES_ACTIVE: docker
@@ -124,11 +124,11 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 40s
+      start_period: 60s
 
   # ==================== CHAT SERVICE ====================
   chat-service:
-    build: ./chat-service
+    build: ./backend/chat-service
     depends_on:
       mongo: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -144,17 +144,17 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 40s
+      start_period: 60s
 
   # ==================== MEDIA SERVICE ====================
   media-service:
-    build: ./media-service
+    build: ./backend/media-service
     depends_on:
       postgres: { condition: service_healthy }
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: media-service
+      POSTGRES_DB: media_service
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: secret123
       SPRING_PROFILES_ACTIVE: docker
@@ -165,11 +165,11 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 40s
+      start_period: 60s
 
   # ==================== NOTIFICATION SERVICE ====================
   notification-service:
-    build: ./notification-service
+    build: ./backend/notification-service
     depends_on:
       redis: { condition: service_healthy }
     environment:
@@ -183,11 +183,11 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 40s
+      start_period: 60s
 
   # ==================== API GATEWAY ====================
   api-gateway:
-    build: ./api-gateway
+    build: ./backend/api-gateway
     depends_on:
       user-service: { condition: service_healthy }
       product-service: { condition: service_healthy }
@@ -202,10 +202,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 60s
   # ==================== FRONTEND ====================
   frontend:
-    build: ../frontend
+    build: ./frontend
     depends_on:
       api-gateway:
         condition: service_healthy

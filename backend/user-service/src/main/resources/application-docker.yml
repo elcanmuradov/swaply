@@ -1,7 +1,7 @@
 spring:
   datasource:
     # ✅ Docker network içinde postgres servis adına bağlan
-    url: jdbc:postgresql://postgres:5432/user-service
+    url: jdbc:postgresql://postgres:5432/user_service
     username: admin
     password: secret123
     driver-class-name: org.postgresql.Driver
