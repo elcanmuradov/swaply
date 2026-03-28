@@ -1,0 +1,77 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  main:
+    web-application-type: reactive
+  codec:
+    max-in-memory-size: 50MB
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
+      routes:
+        - id: auth-service
+          # ✅ Düzeltildi: 8085 -> 8080
+          uri: http://user-service:8080
+          predicates:
+            - Path=/auth/**
+
+        - id: admin-service
+          uri: http://user-service:8080
+          predicates:
+            - Path=/admin/**
+
+        - id: user-service
+          # ✅ Düzeltildi: 8085 -> 8080
+          uri: http://user-service:8080
+          predicates:
+            - Path=/profile/**,/profile
+
+        - id: chat-service
+          # ✅ Düzeltildi: 8082 -> 8080
+          uri: http://chat-service:8080
+          predicates:
+            - Path=/chat/**
+
+        - id: notification-service
+          # ✅ Düzeltildi: 8084 -> 8080
+          uri: http://notification-service:8080
+          predicates:
+            - Path=/notification/**
+
+        - id: media-service
+          # ✅ Düzeltildi: 8083 -> 8080
+          uri: http://media-service:8080
+          predicates:
+            - Path=/media/**
+
+        - id: product-service
+          # ✅ Zaten doğruydu
+          uri: http://product-service:8080
+          predicates:
+            - Path=/user/**,/,/all,/favorites,/product-count,/product/**,/category/**,/search/**,/search
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"

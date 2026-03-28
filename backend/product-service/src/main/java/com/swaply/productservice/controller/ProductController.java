@@ -1,31 +1,127 @@
 package com.swaply.productservice.controller;
 
 import com.swaply.productservice.dto.ApiResponse;
+import com.swaply.productservice.dto.PagedResponse;
 import com.swaply.productservice.dto.ProductDto;
+import com.swaply.productservice.dto.UpdateProductRequest;
 import com.swaply.productservice.dto.create.CreateProductRequest;
 import com.swaply.productservice.dto.create.CreateProductResponse;
 import com.swaply.productservice.service.ProductService;
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
+import com.swaply.productservice.utils.enums.ProductCategory;
+import com.swaply.productservice.utils.enums.ProductStatus;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.*;
 
-import java.security.Principal;
-import java.util.List;
 @RestController
-@RequestMapping("/product")
 @RequiredArgsConstructor
 public class ProductController {
     private final ProductService productService;
 
     @GetMapping("/")
-    public ResponseEntity<ApiResponse<List<ProductDto>>> findAll() {
-        return ResponseEntity.ok(ApiResponse.success(productService.findAll()));
+    public ResponseEntity<ApiResponse<PagedResponse<ProductDto>>> findAllActiveProduct(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(ApiResponse.success(productService.getActiveProducts(pageable)));
     }
 
-    @PostMapping("/create")
-    public ResponseEntity<ApiResponse<CreateProductResponse>> create(@RequestBody CreateProductRequest request) {
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse<PagedResponse<ProductDto>>> findAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(ApiResponse.success(productService.getAllPaged(pageable)));
+    }
+
+    @GetMapping("/category/{category}")
+    public ResponseEntity<ApiResponse<PagedResponse<ProductDto>>> findByCategory(
+            @PathVariable ProductCategory category,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(ApiResponse.success(productService.getProductsByCategory(category, pageable)));
+    }
+
+    @GetMapping("/favorites")
+    public ResponseEntity<ApiResponse<List<ProductDto>>> findAllFavorites() {
+        return ResponseEntity.ok(ApiResponse.success(productService.getFavoriteProducts()));
+    }
+    @PostMapping(path = "user/{userId}/product/create")
+    public ResponseEntity<ApiResponse<CreateProductResponse>> create(@Valid @RequestBody CreateProductRequest request) {
         return ResponseEntity.ok(ApiResponse.success(productService.createProduct(request)));
     }
+
+    @GetMapping("user/{userId}/product")
+    public ResponseEntity<ApiResponse<PagedResponse<ProductDto>>> findByUserId(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(ApiResponse.success(productService.getProductsByUserId(userId, pageable)));
+    }
+
+    @GetMapping("user/{userId}/product/{productId}")
+    ResponseEntity<ApiResponse<ProductDto>> findById(@PathVariable UUID productId) {
+        return ResponseEntity.ok(ApiResponse.success(productService.getProductById(productId)));
+    }
+
+    @GetMapping("user/{userId}/product/status/{status}")
+    public ResponseEntity<ApiResponse<PagedResponse<ProductDto>>> findByStatusAndUserId(
+            @PathVariable UUID userId, 
+            @PathVariable ProductStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(ApiResponse.success(productService.getProductsByStatusAndUserId(status, userId, pageable)));
+    }
+
+    @GetMapping("user/{userId}/product/delete")
+    public ResponseEntity<ApiResponse<PagedResponse<ProductDto>>> findDeletedProductByUserId(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "30") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(ApiResponse.success(productService.getDeletedProductByUserId(userId, pageable)));
+    }
+
+    @PutMapping("user/{userId}/product/{productId}/set-active")
+    public ResponseEntity<ApiResponse<ProductDto>> setActiveProduct(@PathVariable UUID userId, @PathVariable UUID productId) {
+        return ResponseEntity.ok(ApiResponse.success(productService.setActive(userId, productId)));
+    }
+
+
+    @DeleteMapping("user/{userId}/product/{productId}/delete")
+    public void deleteById(@PathVariable UUID productId) {
+        productService.deleteByID(productId);
+    }
+
+    @DeleteMapping("/user/delete-from-db/{productId}")
+    public void deleteProduct(@PathVariable UUID productId) {
+        productService.deleteProduct(productId);
+    }
+
+    // user-service Client functions
+
+    @GetMapping("/product-count")
+    public ResponseEntity<ApiResponse<Long>> getProductCount(){
+        return ResponseEntity.ok(ApiResponse.success(productService.getProductCount()));
+    }
+
+
+
+    @PutMapping("user/{userId}/product/{productId}/update")
+    public ResponseEntity<ApiResponse<ProductDto>> updateProduct(@RequestBody UpdateProductRequest updateProductRequest, @PathVariable UUID productId) {
+        return ResponseEntity.ok(ApiResponse.success(productService.updateProduct(updateProductRequest,productId)));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<ProductDto>>> search(@RequestParam String q) {
+        return ResponseEntity.ok(ApiResponse.success(productService.searchProducts(q)));
+    }
+
 }

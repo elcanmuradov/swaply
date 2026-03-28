@@ -4,9 +4,13 @@ import lombok.Builder;
 import lombok.Data;
 
 import static com.swaply.productservice.utils.messages.Constants.SUCCESS_MESSAGE;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Builder
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ApiResponse<T> {
 
     private  boolean success;

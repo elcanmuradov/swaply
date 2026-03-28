@@ -4,28 +4,27 @@ import com.swaply.productservice.utils.enums.City;
 import com.swaply.productservice.utils.enums.ProductCategory;
 import com.swaply.productservice.utils.enums.ProductStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Date;
 import java.util.UUID;
 
-@Entity
-@Table(name = "products",schema = "productschema")
+@Entity(name = "Product")
+@Table(name = "products")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class Product {
 
     @Id
@@ -44,33 +43,36 @@ public class Product {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
+    @Builder.Default
     @Column(name = "is_new")
     private Boolean isNew = false;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.ORDINAL)
     @Column(nullable = false)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private ProductCategory category;
 
+    @Builder.Default
     @Column(name = "is_delivery")
     private Boolean isDelivery = false;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Enumerated(EnumType.ORDINAL)
     @Column(nullable = false)
     private City city;
 
-    @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Builder.Default
+    @Enumerated(EnumType.ORDINAL)
     @Column(nullable = false)
     private ProductStatus status = ProductStatus.ACTIVE;
 
+    @Builder.Default
+    @Column(name = "deleted_at", nullable = true)
+    private LocalDate deletedAt = null;
+
+    @Builder.Default
     @Column()
     private Long viewers = 0L;
 
-    // ✅ İlişki: Cascade ALL ile Product silinince resimler de silinir
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("sort_order ASC") // Sıralamaya göre getir
     private List<ProductImage> images = new ArrayList<>();
 
     @CreationTimestamp

@@ -1,0 +1,18 @@
+package com.swaply.productservice.repository.elastic;
+
+import com.swaply.productservice.document.ProductDocument;
+import com.swaply.productservice.utils.enums.ProductStatus;
+import org.springframework.data.elasticsearch.annotations.Query;
+import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface ElasticProductRepository extends ElasticsearchRepository<ProductDocument, String> {
+
+    @Query("{\"bool\": {\"must\": [{\"match\": {\"status\": \"ACTIVE\"}}, {\"multi_match\": {\"query\": \"?0\", \"fields\": [\"title\", \"description\"]}}]}}")
+    List<ProductDocument> searchActiveProducts(String query);
+
+    List<ProductDocument> findByStatusAndTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(ProductStatus status, String title, String description);
+}

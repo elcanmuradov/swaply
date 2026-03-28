@@ -1,10 +1,48 @@
 spring:
   application:
     name: product-service
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      enabled: true
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  cloud:
+    kubernetes:
+      discovery:
+        enabled: true
+        all-namespaces: false
+  main:
+    web-application-type: servlet
   datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
-    username: product-service
-    password: 1234
+    url: jdbc:postgresql://localhost:5432/product-service
+    username: admin
+    password: secret123
     driver-class-name: org.postgresql.Driver
+  elasticsearch:
+    uris: http://localhost:9200
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000ms #10dq
+      cache-null-values: false
 server:
   port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

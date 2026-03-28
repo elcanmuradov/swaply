@@ -12,7 +12,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProductImageDto {
-    private UUID id;
+    private Long id;
     private String imageUrl;
     private Integer sortOrder;
     private Boolean isCover;

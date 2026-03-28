@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "product_images", schema = "productschema")
+@Table(name = "product_images")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,21 +20,15 @@ import java.util.UUID;
 public class ProductImage {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Column(name = "image_url", nullable = false)
     private String imageUrl;
-
-    @Column(name = "sort_order")
-    private Integer sortOrder = 0;
+    private String publicId;
+    private Integer displayOrder;
+    private Boolean isMain;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    @JsonIgnore
+    @JoinColumn(name = "product_id")
     private Product product;
-
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
 }

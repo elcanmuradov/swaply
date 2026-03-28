@@ -1,0 +1,263 @@
+services:
+  # ==================== POSTGRESQL (MERKEZİ) ====================
+  postgres:
+    image: postgres:16-alpine
+    container_name: microservices-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret123
+      POSTGRES_DB: admin
+    ports:
+      - "5436:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./product-service/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    networks:
+      - microservices-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== REDIS ====================
+  redis:
+    image: redis:7-alpine
+    container_name: microservices-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - microservices-net
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== MONGODB ====================
+  mongo:
+    image: mongo:latest
+    container_name: microservices-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret123
+      MONGO_INITDB_DATABASE: chat_db
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - microservices-net
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== ELASTICSEARCH ====================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    container_name: microservices-elastic
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elastic-data:/usr/share/elasticsearch/data
+    networks:
+      - microservices-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+  # ==================== USER SERVICE ====================
+  user-service:
+    build: ./user-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: user-service
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_PROFILES_ACTIVE: docker
+    restart: unless-stopped
+    networks: [ microservices-net ]
+    # ✅ GÜNCELLENDİ: wget yerine /dev/tcp kullanıldı
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ==================== PRODUCT SERVICE ====================
+  product-service:
+    build: ./product-service
+    depends_on:
+      postgres: { condition: service_healthy }
+      media-service: { condition: service_healthy }
+      elasticsearch: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: product-service
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret123
+      SPRING_PROFILES_ACTIVE: docker
+    restart: unless-stopped
+    networks: [ microservices-net ]
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ==================== CHAT SERVICE ====================
+  chat-service:
+    build: ./chat-service
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      SPRING_DATA_MONGODB_URI: mongodb://admin:secret123@mongo:27017/chat_db?authSource=admin
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_PROFILES_ACTIVE: docker
+    restart: unless-stopped
+    networks: [ microservices-net ]
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ==================== MEDIA SERVICE ====================
+  media-service:
+    build: ./media-service
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: media-service
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret123
+      SPRING_PROFILES_ACTIVE: docker
+    restart: unless-stopped
+    networks: [ microservices-net ]
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ==================== NOTIFICATION SERVICE ====================
+  notification-service:
+    build: ./notification-service
+    depends_on:
+      redis: { condition: service_healthy }
+    environment:
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      MAIL_HOST: mailhog
+      SPRING_PROFILES_ACTIVE: docker
+    restart: unless-stopped
+    networks: [ microservices-net ]
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health || exit 1" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ==================== API GATEWAY ====================
+  api-gateway:
+    build: ./api-gateway
+    depends_on:
+      user-service: { condition: service_healthy }
+      product-service: { condition: service_healthy }
+      chat-service: { condition: service_healthy }
+      media-service: { condition: service_healthy }
+      notification-service: { condition: service_healthy }
+    ports: [ "8080:8080" ]
+    networks: [ microservices-net ]
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+  # ==================== FRONTEND ====================
+  frontend:
+    build: ../frontend
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    networks:
+      - microservices-net
+
+  # ==================== PGADMIN ====================
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: microservices-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: elcanmuradov25@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - microservices-net
+
+  # ==================== REDIS COMMANDER ====================
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: microservices-redis-commander
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - microservices-net
+
+  # ==================== MAILHOG ====================
+  mailhog:
+    image: mailhog/mailhog
+    container_name: microservices-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - microservices-net
+
+networks:
+  microservices-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redis-data:
+  mongo-data:
+  elastic-data:
