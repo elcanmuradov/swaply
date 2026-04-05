@@ -45,10 +45,6 @@ public class CreateProductRequest {
     @NotNull(message = "Şehir gerekli")
     private Integer cityId;
 
-    @NotEmpty(message = "En az bir resim eklenmeli")
-    @Builder.Default
-    private List<ImageRequest> images = new ArrayList<>();
-
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

@@ -23,13 +23,14 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -45,8 +46,9 @@ public class ProductService {
     private final MediaClient mediaClient;
     private final ElasticProductRepository elasticProductRepository;
 
+
     @CacheEvict(value = "products", allEntries = true)
-    public CreateProductResponse createProduct(CreateProductRequest createProductRequest) {
+    public CreateProductResponse createProduct(CreateProductRequest createProductRequest, List<MultipartFile> files) {
         Product product = new Product();
         product.setTitle(createProductRequest.getTitle());
         product.setPrice(createProductRequest.getPrice());
@@ -58,19 +60,12 @@ public class ProductService {
         product.setIsNew(createProductRequest.getIsNew());
         product.setIsDelivery(createProductRequest.getIsDelivery());
 
-        if (createProductRequest.getImages() != null && !createProductRequest.getImages().isEmpty()) {
-            AtomicInteger order = new AtomicInteger();
-            createProductRequest.getImages().forEach(img -> {
-                ProductImage image = new ProductImage();
-                image.setImageUrl(img.getImageUrl());
-                image.setPublicId(img.getPublicId());
-                image.setDisplayOrder(order.getAndIncrement());
-                image.setIsMain(order.get() == 1);
-                image.setProduct(product);
-                product.getImages().add(image);
-            });
-        }
         productRepository.save(product);
+
+        if (files != null && !files.isEmpty()) {
+             uploadProductImagesAsync(files, product.getId());
+        }
+
         syncToElastic(product);
 
         return CreateProductResponse.builder()
@@ -90,6 +85,47 @@ public class ProductService {
                 .build();
     }
 
+
+    @Async
+    public void uploadProductImagesAsync(List<MultipartFile> files, UUID productId) {
+        try {
+            log.info("Starting background image upload for product: {}", productId);
+            var response = mediaClient.uploadMultipleFiles(files);
+
+            if (response != null && response.getData() != null) {
+                Product product = productRepository.findById(productId).orElseThrow();
+                var list = product.getImages();
+                List<Map<String, String>> uploadResults = response.getData();
+               AtomicInteger i = new AtomicInteger();
+                uploadResults.forEach(res -> {
+                    ProductImage image = new ProductImage();
+                    image.setImageUrl(res.get("url"));
+                    image.setPublicId(res.get("publicId"));
+                    image.setDisplayOrder(i.getAndIncrement());
+                    image.setIsMain(i.get() == 1);
+                    image.setProduct(product);
+                    list.add(image);
+                });
+                product.setImages(list);
+                productRepository.save(product);
+                syncToElastic(product);
+                log.info("Product images updated successfully for product: {}", productId);
+            }
+        } catch (Exception e) {
+            log.error("Error uploading images for product {}", productId);
+
+        }
+    }
+
+
+
+
+
+
+
+
+
+
     public List<ProductDto> getFavoriteProducts() {
         List<UUID> productsId = userClient.findAllFavorites();
         List<ProductDto> productDtos = new ArrayList<>();
@@ -107,6 +143,11 @@ public class ProductService {
         return productMapper.toDto(product);
     }
 
+
+
+
+
+
     public PagedResponse<ProductDto> getProductsByUserId(UUID userId, Pageable pageable) {
         log.info("get user products, page: {}", pageable.getPageNumber());
         Page<Product> page = productRepository.getProductByUserId(userId, pageable);
@@ -120,11 +161,6 @@ public class ProductService {
         return mapToPagedResponse(page);
     }
 
-    public List<ProductDto> getAll() {
-        log.info("getting all products");
-        return productRepository.findAll().stream()
-                .map(productMapper::toDto).collect(Collectors.toList());
-    }
 
     public PagedResponse<ProductDto> getAllPaged(Pageable pageable) {
         log.info("getting all products paged");
@@ -135,14 +171,6 @@ public class ProductService {
     public PagedResponse<ProductDto> getProductsByStatusAndUserId(ProductStatus status, UUID userId, Pageable pageable) {
         log.info("getting products by status {} and user id {}, page: {}", status, userId, pageable.getPageNumber());
         Page<Product> productPage = productRepository.getProductsByStatusAndUserId(status, userId, pageable);
-        
-        productPage.forEach(product -> {
-            if (ChronoUnit.DAYS.between(product.getCreatedAt(), LocalDateTime.now()) >= 30) {
-                product.setStatus(ProductStatus.EXPIRED);
-                productRepository.save(product);
-            }
-        });
-
         return mapToPagedResponse(productPage);
     }
 
@@ -162,7 +190,7 @@ public class ProductService {
         Product product = productRepository.getProductById(uuid)
                 .orElseThrow(() -> new NotFoundException(PRODUCT_NOT_FOUND + uuid));
         product.setStatus(ProductStatus.DELETED);
-        product.setDeletedAt(LocalDate.now());
+        product.setDeletedAt(LocalDateTime.now());
         productRepository.save(product);
         syncToElastic(product);
     }
@@ -198,7 +226,7 @@ public class ProductService {
     }
 
     @CacheEvict(value = "products", allEntries = true)
-    public ProductDto setActive(UUID userId, UUID productId) {
+    public ProductDto setActive(UUID productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(PRODUCT_NOT_FOUND + productId));
         product.setStatus(ProductStatus.ACTIVE);

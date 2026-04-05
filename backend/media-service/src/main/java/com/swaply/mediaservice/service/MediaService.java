@@ -68,6 +68,21 @@ public class MediaService {
         return results;
     }
 
+    public Map<String, String> uploadFile(MultipartFile file) {
+        try {
+            if (!file.isEmpty()) {
+                Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+                return Map.of(
+                        "url", uploadResult.get("secure_url").toString(),
+                        "publicId", uploadResult.get("public_id").toString()
+                );
+            }
+        } catch (IOException e) {
+            log.error("Fayl yüklənmədi: " + file.getOriginalFilename(), e);
+        }
+        return null;
+    }
+
 
     public void deleteAllResources() {
         try {

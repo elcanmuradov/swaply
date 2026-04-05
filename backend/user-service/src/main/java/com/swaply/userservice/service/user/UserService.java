@@ -2,6 +2,8 @@ package com.swaply.userservice.service.user;
 
 import com.swaply.userservice.dto.user.ChangePasswordRequest;
 import com.swaply.userservice.dto.user.UserDto;
+import com.swaply.userservice.dto.user.update.ProfilePhotoRequest;
+import org.springframework.web.multipart.MultipartFile;
 import com.swaply.userservice.entity.User;
 import com.swaply.userservice.exception.AuthException;
 import com.swaply.userservice.mapper.UserMapper;
@@ -65,5 +67,11 @@ public class UserService {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow(() -> new AuthException(authentication.getName() + " User not found"));
         return user.getFavoritedProductsIds();
 
+    }
+
+    private final MediaStorageService mediaStorageService;
+
+    public void changeProfilePhoto(MultipartFile file, Authentication authentication) {
+        mediaStorageService.uploadProfilePhotoAsync(file, authentication.getName());
     }
 }

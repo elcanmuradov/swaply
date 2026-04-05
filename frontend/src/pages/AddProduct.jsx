@@ -116,8 +116,6 @@ const AddProduct = () => {
         }
 
         try {
-            setLoadingMessage(`Şəkillər optimallaşdırılır (0/${images.length})...`);
-
             const compressedImages = [];
             for (let i = 0; i < images.length; i++) {
                 setLoadingMessage(`Şəkillər optimallaşdırılır (${i + 1}/${images.length})...`);
@@ -125,63 +123,39 @@ const AddProduct = () => {
                 compressedImages.push(compressed);
             }
 
-            setLoadingMessage("Şəkillər yüklənir...");
-            // Cloudinary imza üçün lazım olan parametrlər
-            const signatureParams = {
-                upload_preset: 'Swaply',
-                asset_folder: 'swaply/product'
-            };
+            setLoadingMessage('Məhsul yaradılır...');
 
-            const sigRes = await api.post('/media/signature', signatureParams);
-            const { signature, timestamp, api_key, cloud_name } = sigRes.data.data;
-
-            setLoadingMessage("Elan yerləşdirilir...");
-
-            // Bütün şəkilləri parallel olaraq Cloudinary-ə yükləyirik
-            const uploadPromises = compressedImages.map(async (file, index) => {
-                const cloudFormData = new FormData();
-                cloudFormData.append('file', file);
-                cloudFormData.append('api_key', api_key);
-                cloudFormData.append('timestamp', timestamp);
-                cloudFormData.append('signature', signature);
-                cloudFormData.append('upload_preset', 'Swaply');
-                cloudFormData.append('asset_folder', 'swaply/product');
-
-                const response = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`, {
-                    method: 'POST',
-                    body: cloudFormData
-                });
-
-                const result = await response.json();
-                if (result.error) throw new Error(result.error.message);
-                
-                // Həm URL, həm də public_id qaytarırıq
-                return {
-                    imageUrl: result.secure_url,
-                    publicId: result.public_id
-                };
-            });
-
-            const uploadedImages = await Promise.all(uploadPromises);
-
-            setLoadingMessage("Elan qeydə alınır...");
-
-            // Backend-ə artıq URL siyahısı yox, obyekt siyahısı göndəririk
-            const finalPayload = {
-                ...formData,
-                userId: user.id,
+            const formDataPayload = new FormData();
+            
+            const productData = {
+                title: formData.title,
+                description: formData.description,
                 price: parseFloat(formData.price),
                 categoryId: parseInt(formData.categoryId),
                 cityId: parseInt(formData.cityId),
-                images: uploadedImages // {imageUrl, publicId}
+                isNew: formData.isNew,
+                isDelivery: formData.isDelivery,
+                userId: user.id
             };
+            
+            formDataPayload.append('request', new Blob([JSON.stringify(productData)], { type: 'application/json' }));
+            
+            compressedImages.forEach(file => {
+                formDataPayload.append('files', file);
+            });
 
-            await api.post(`/user/${user.id}/product/create`, finalPayload);
+            await api.post(`/user/${user.id}/product/create`, formDataPayload, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            setLoadingMessage('Məhsul uğurla yaradıldı!');
             alert("Elan uğurla yerləşdirildi!");
             navigate("/");
         } catch (error) {
-            console.error("Elan yerləşdirilərkən xəta baş verdi:", error);
-            alert("Xəta baş verdi: " + (error.message || "Yenidən cəhd edin."));
+            console.error('Xəta:', error);
+            alert('Məhsul yaradılarkən xəta baş verdi: ' + (error.response?.data?.message || error.message));
         } finally {
             setLoading(false);
         }

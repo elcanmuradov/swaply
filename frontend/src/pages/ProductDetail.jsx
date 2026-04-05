@@ -232,7 +232,11 @@ const ProductDetail = () => {
                         transition={{ delay: 0.2 }}
                     >
                         <div className="seller-avatar">
-                            {sellerName.substring(0, 2).toUpperCase()}
+                            {seller?.profileImageUrl ? (
+                                <img src={seller.profileImageUrl} alt={sellerName} className="seller-photo" />
+                            ) : (
+                                sellerName.substring(0, 2).toUpperCase()
+                            )}
                         </div>
                         <div className="seller-info">
                             <div className="seller-name">{sellerName}</div>
@@ -471,6 +475,13 @@ const ProductDetail = () => {
                     justify-content: center;
                     color: white;
                     font-weight: 700;
+                    overflow: hidden; /* Added to clip the image to the circle */
+                }
+
+                .seller-photo {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
                 }
 
                 .seller-info { flex: 1; }

@@ -6,16 +6,12 @@ import com.swaply.productservice.utils.enums.ProductStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Date;
 import java.util.UUID;
 
 @Entity(name = "Product")
@@ -66,7 +62,7 @@ public class Product {
 
     @Builder.Default
     @Column(name = "deleted_at", nullable = true)
-    private LocalDate deletedAt = null;
+    private LocalDateTime deletedAt = null;
 
     @Builder.Default
     @Column()

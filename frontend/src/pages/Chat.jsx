@@ -17,6 +17,8 @@ const Chat = () => {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const stompClientRef = useRef(null);
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
+    const [uploading, setUploading] = useState(false);
 
     const fetchConversations = async () => {
         try {
@@ -163,13 +165,15 @@ const Chat = () => {
         }
     }, [selectedChat?.id]);
 
-    const handleSendMessage = () => {
-        if (!inputMessage.trim() || !selectedChat) return;
+    const handleSendMessage = (content = inputMessage, type = 'TEXT') => {
+        if ((!content || !content.trim()) && type === 'TEXT') return;
+        if (!selectedChat) return;
 
         const messageData = {
             receiverId: selectedChat.id,
-            content: inputMessage,
+            content: content,
             productId: selectedProduct?.id,
+            messageType: type,
             read: false
         };
 
@@ -193,16 +197,47 @@ const Chat = () => {
                 
                 const updatedChat = {
                     ...chatToUpdate,
-                    lastMsg: inputMessage,
+                    lastMsg: type === 'TEXT' ? content : `[${type}]`,
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     unread: 0
                 };
                 
-                // Move to top and remove old version
                 return [updatedChat, ...prev.filter(c => c.id !== selectedChat.id)];
             });
 
-            setInputMessage("");
+            if (type === 'TEXT') setInputMessage("");
+        }
+    };
+
+    const handleFileSelect = async (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        setUploading(true);
+        try {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await axios.post('/api/media/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const url = response.data.data.url;
+                const type = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
+                
+                handleSendMessage(url, type);
+            }
+        } catch (error) {
+            console.error("Media upload failed", error);
+            alert("Şəkil və ya video yüklənərkən xəta baş verdi.");
+        } finally {
+            setUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -314,9 +349,16 @@ const Chat = () => {
                                             backgroundColor: msg.senderId === user?.id ? 'var(--primary)' : 'var(--bg)',
                                             color: msg.senderId === user?.id ? 'white' : 'var(--text)',
                                             borderRadius: msg.senderId === user?.id ? '15px 15px 0 15px' : '15px 15px 15px 0',
-                                            maxWidth: '85%'
+                                            maxWidth: '85%',
+                                            padding: (msg.messageType === 'IMAGE' || msg.messageType === 'VIDEO') ? '5px' : '10px 16px'
                                         }}>
-                                            {msg.content}
+                                            {msg.messageType === 'IMAGE' ? (
+                                                <img src={msg.content} alt="media" style={{ maxWidth: '100%', borderRadius: '10px', display: 'block' }} />
+                                            ) : msg.messageType === 'VIDEO' ? (
+                                                <video src={msg.content} controls style={{ maxWidth: '100%', borderRadius: '10px', display: 'block' }} />
+                                            ) : (
+                                                msg.content
+                                            )}
 
                                             {msg.senderId !== user?.id && !msg.isReported && (
                                                 <button 
@@ -340,7 +382,25 @@ const Chat = () => {
                             </div>
 
                             <div style={{ padding: '1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                                <Image size={24} color="var(--text-light)" style={{ cursor: 'pointer' }} className="desktop-only" />
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    hidden 
+                                    multiple 
+                                    accept="image/*,video/*" 
+                                    onChange={handleFileSelect} 
+                                />
+                                <button 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploading}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                >
+                                    {uploading ? (
+                                        <div className="animate-spin" style={{ width: '20px', height: '20px', border: '2px solid #ccc', borderTopColor: 'var(--primary)', borderRadius: '50%' }} />
+                                    ) : (
+                                        <Image size={24} color="var(--text-light)" />
+                                    )}
+                                </button>
                                 <div style={{ flex: 1, position: 'relative' }}>
                                     <input
                                         type="text"

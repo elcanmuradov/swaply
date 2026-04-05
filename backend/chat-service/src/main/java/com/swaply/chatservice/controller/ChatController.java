@@ -31,6 +31,7 @@ public class ChatController {
         chatService.markMessageAsRead(message.getId(), currentUsername);
     }
 
+
     @GetMapping("/history/{otherUserId}")
     public ResponseEntity<List<MessageDto>> getHistory(@PathVariable UUID otherUserId, @RequestHeader("X-User-Id") UUID currentUserId) {
         return ResponseEntity.ok(chatService.getMessagesWithUser(currentUserId, otherUserId));
@@ -40,6 +41,7 @@ public class ChatController {
     public ResponseEntity<List<ConversationDto>> getConversations(@RequestHeader("X-User-Id") UUID currentUserId, @RequestHeader("Authorization") String token) {
         return ResponseEntity.ok(chatService.getConversations(currentUserId, token));
     }
+
 
 
     @PutMapping("/{messageId}/report-message")

@@ -51,6 +51,10 @@ public class User implements UserDetails {
     @JsonIgnore
     private String password;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private String profileImageUrl = "https://static.vecteezy.com/system/resources/previews/007/335/692/non_2x/account-icon-template-vector.jpg";
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole userRole;

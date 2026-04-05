@@ -15,6 +15,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.*;
 
 @RestController
@@ -51,9 +53,11 @@ public class ProductController {
     public ResponseEntity<ApiResponse<List<ProductDto>>> findAllFavorites() {
         return ResponseEntity.ok(ApiResponse.success(productService.getFavoriteProducts()));
     }
-    @PostMapping(path = "user/{userId}/product/create")
-    public ResponseEntity<ApiResponse<CreateProductResponse>> create(@Valid @RequestBody CreateProductRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(productService.createProduct(request)));
+    @PostMapping(path = "user/{userId}/product/create", consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<CreateProductResponse>> create(
+            @RequestPart("request") @Valid CreateProductRequest request,
+            @RequestPart("files") List<MultipartFile> files) {
+        return ResponseEntity.ok(ApiResponse.success(productService.createProduct(request, files)));
     }
 
     @GetMapping("user/{userId}/product")
@@ -90,8 +94,8 @@ public class ProductController {
     }
 
     @PutMapping("user/{userId}/product/{productId}/set-active")
-    public ResponseEntity<ApiResponse<ProductDto>> setActiveProduct(@PathVariable UUID userId, @PathVariable UUID productId) {
-        return ResponseEntity.ok(ApiResponse.success(productService.setActive(userId, productId)));
+    public ResponseEntity<ApiResponse<ProductDto>> setActiveProduct(@PathVariable UUID productId) {
+        return ResponseEntity.ok(ApiResponse.success(productService.setActive(productId)));
     }
 
 

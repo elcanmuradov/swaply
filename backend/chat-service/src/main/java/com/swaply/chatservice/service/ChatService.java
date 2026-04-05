@@ -1,5 +1,6 @@
 package com.swaply.chatservice.service;
 
+import com.swaply.chatservice.client.MediaClient;
 import com.swaply.chatservice.client.UserClient;
 import com.swaply.chatservice.dto.ConversationDto;
 import com.swaply.chatservice.dto.MessageDto;
@@ -8,18 +9,19 @@ import com.swaply.chatservice.entity.Message;
 import com.swaply.chatservice.exception.NotFoundException;
 import com.swaply.chatservice.repository.ChatRepository;
 import com.swaply.chatservice.utils.enums.MessageStatus;
+import com.swaply.chatservice.utils.enums.MessageType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -28,7 +30,8 @@ import java.util.stream.Collectors;
 public class ChatService {
     private final UserClient userClient;
     private final SimpMessagingTemplate messagingTemplate;
-    private final ChatRepository chatRepository;
+    private final ChatRepository ChatRepository;
+    private final MediaClient mediaClient;
 
     public void sendMessageToUser(MessageDto incomingMessage, StompHeaderAccessor accessor) {
         Principal principal = accessor.getUser();
@@ -61,7 +64,7 @@ public class ChatService {
                 "/queue/messages",
                 incomingMessage
         );
-        log.info("Message sended to {}", incomingMessage.getSenderId());
+        log.info("Message sent to {}", incomingMessage.getSenderId());
     }
 
     public void saveMessage(MessageDto incomingMessage) {
@@ -72,23 +75,24 @@ public class ChatService {
                 .content(incomingMessage.getContent())
                 .productId(incomingMessage.getProductId())
                 .sentAt(incomingMessage.getSentAt())
+                .messageType(incomingMessage.getMessageType())
                 .isRead(incomingMessage.isRead())
                 .build();
-        chatRepository.save(message);
+        ChatRepository.save(message);
         incomingMessage.setId(message.getId());
         log.info("Saved message: {}", incomingMessage);
     }
 
     public List<MessageDto> getMessagesWithUser(UUID userId, UUID otherUserId) {
         log.info("Getting messages with user {} and other user {}", userId, otherUserId);
-        List<Message> messages = chatRepository.findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderBySentAtAsc(userId, otherUserId, userId, otherUserId);
+        List<Message> messages = ChatRepository.findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderBySentAtAsc(userId, otherUserId, userId, otherUserId);
         return messages.stream().map(this::toDto).collect(Collectors.toList());
     }
 
     public List<ConversationDto> getConversations(UUID userId, String token) {
         log.info("Getting conversations with info for user {}", userId);
 
-        List<Message> messages = chatRepository.findConversationsByUserId(userId);
+        List<Message> messages = ChatRepository.findConversationsByUserId(userId);
         return messages.stream()
                 .map(msg -> msg.getSenderId().equals(userId) ? msg.getReceiverId() : msg.getSenderId())
                 .distinct()
@@ -119,12 +123,44 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
 
+    public void reportMessage(String messageId) {
+       Message message = ChatRepository.findById(messageId).orElseThrow(() -> new NotFoundException("MessageId: " + messageId));
+       message.setIsReported(true);
+       message.setReportedAt(LocalDateTime.now());
+       message.setStatus(MessageStatus.PENDING);
+       log.info("Reported message: {}", message);
+       ChatRepository.save(message);
+    }
+
+
+    public List<MessageDto> getReportedMessages() {
+        List<Message> messages = ChatRepository.findMessagesByIsReported(true);
+        List<MessageDto> dtos = new ArrayList<>();
+        messages.forEach(message-> {
+            dtos.add(toDto(message));
+        });
+
+        return dtos;
+    }
+
+    public void setBanned(String messageId) {
+        Message message =  ChatRepository.findById(messageId).orElseThrow(() -> new NotFoundException("MessageId: " + messageId));
+        message.setStatus(MessageStatus.BANNED);
+        ChatRepository.save(message);
+    }
+
+    public void setResolved(String messageId) {
+        Message message =  ChatRepository.findById(messageId).orElseThrow(() -> new NotFoundException("MessageId: " + messageId));
+        message.setStatus(MessageStatus.RESOLVED);
+        ChatRepository.save(message);
+    }
+
     public void markMessageAsRead(String messageId, String currentUsername) {
-        Optional<Message> messageOpt = chatRepository.findById(messageId);
+        Optional<Message> messageOpt = ChatRepository.findById(messageId);
         if (messageOpt.isPresent()) {
             Message message = messageOpt.get();
             message.setIsRead(true);
-            chatRepository.save(message);
+            ChatRepository.save(message);
         }
     }
 
@@ -136,43 +172,11 @@ public class ChatService {
                 .content(message.getContent())
                 .productId(message.getProductId())
                 .sentAt(message.getSentAt())
+                .messageType(message.getMessageType())
                 .isRead(message.getIsRead())
                 .isReported(message.getIsReported())
                 .reportedAt(message.getReportedAt())
                 .status(message.getStatus())
                 .build();
     }
-
-    public void reportMessage(String messageId) {
-       Message message = chatRepository.findById(messageId).orElseThrow(() -> new NotFoundException("MessageId: " + messageId));
-       message.setIsReported(true);
-       message.setReportedAt(LocalDateTime.now());
-       message.setStatus(MessageStatus.PENDING);
-       log.info("Reported message: {}", message);
-       chatRepository.save(message);
-    }
-
-
-    public List<MessageDto> getReportedMessages() {
-        List<Message> messages = chatRepository.findMessagesByIsReported(true);
-        List<MessageDto> dtos = new ArrayList<>();
-        messages.forEach(message-> {
-            dtos.add(toDto(message));
-        });
-
-        return dtos;
-    }
-
-    public void setBanned(String messageId) {
-        Message message =  chatRepository.findById(messageId).orElseThrow(() -> new NotFoundException("MessageId: " + messageId));
-        message.setStatus(MessageStatus.BANNED);
-        chatRepository.save(message);
-    }
-
-    public void setResolved(String messageId) {
-        Message message =  chatRepository.findById(messageId).orElseThrow(() -> new NotFoundException("MessageId: " + messageId));
-        message.setStatus(MessageStatus.RESOLVED);
-        chatRepository.save(message);
-    }
-
 }

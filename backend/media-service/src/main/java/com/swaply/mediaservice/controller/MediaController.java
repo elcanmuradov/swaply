@@ -26,6 +26,12 @@ public class MediaController {
         return ResponseEntity.ok(ApiResponse.success(mediaService.uploadFiles(files)));
     }
 
+    @PostMapping("/upload")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadFile(
+            @RequestPart("file") MultipartFile file) {
+        return ResponseEntity.ok(ApiResponse.success(mediaService.uploadFile(file)));
+    }
+
     @PostMapping("/signature")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSignature(@RequestBody Map<String, Object> params) {
         return ResponseEntity.ok(ApiResponse.success(mediaService.getUploadSignature(params)));

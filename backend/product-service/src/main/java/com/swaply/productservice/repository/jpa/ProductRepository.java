@@ -3,12 +3,17 @@ package com.swaply.productservice.repository.jpa;
 import com.swaply.productservice.entity.Product;
 import com.swaply.productservice.utils.enums.ProductCategory;
 import com.swaply.productservice.utils.enums.ProductStatus;
+import feign.Param;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,4 +37,10 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @EntityGraph(attributePaths = {"images"})
     List<Product> findByStatusAndTitleContainingIgnoreCase(ProductStatus status, String title);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Product p SET p.status = :status WHERE p.createdAt < :thresholdDate AND p.status != :status")
+    int expireOldProducts(@Param("thresholdDate") LocalDateTime thresholdDate,
+                          @Param("status") ProductStatus status);
 }

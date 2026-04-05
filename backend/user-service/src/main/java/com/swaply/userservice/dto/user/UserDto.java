@@ -31,6 +31,8 @@ public class UserDto {
     
     private LocalDateTime expiredAt;
 
+    private String profileImageUrl;
+
     @Builder.Default
     private List<UUID> favoritedProductsIds = new ArrayList<>();
 

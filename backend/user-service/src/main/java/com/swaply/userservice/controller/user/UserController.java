@@ -3,11 +3,13 @@ package com.swaply.userservice.controller.user;
 import com.swaply.userservice.dto.ApiResponse;
 import com.swaply.userservice.dto.user.ChangePasswordRequest;
 import com.swaply.userservice.dto.user.UserDto;
+import com.swaply.userservice.dto.user.update.ProfilePhotoRequest;
 import com.swaply.userservice.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 import java.util.List;
@@ -41,6 +43,15 @@ public class UserController {
             return ResponseEntity.status(401).build();
         }
         return ResponseEntity.ok(ApiResponse.success(userService.addProductToFavorites(productId,authentication)));
+    }
+
+    @PutMapping("/profile/changePhoto")
+    public ResponseEntity<ApiResponse<Void>> changeProfilePhoto(@RequestParam("file") MultipartFile file, Authentication authentication){
+        if (authentication == null) {
+            return ResponseEntity.status(401).build();
+        }
+        userService.changeProfilePhoto(file, authentication);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @DeleteMapping("/profile/favorites/{productId}")

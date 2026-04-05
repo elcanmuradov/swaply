@@ -17,7 +17,8 @@ import {
     Clock,
     EyeOff,
     Archive,
-    MapPin
+    MapPin,
+    Camera
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api/axios';
@@ -36,6 +37,83 @@ const Profile = () => {
     // Password change state
     const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '' });
     const [updatingPassword, setUpdatingPassword] = useState(false);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+    const compressImage = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1000;
+                    const MAX_HEIGHT = 1000;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            reject(new Error("Canvas to Blob conversion failed"));
+                            return;
+                        }
+                        resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg' }));
+                    }, 'image/jpeg', 0.9);
+                };
+                img.onerror = reject;
+            };
+            reader.onerror = reject;
+        });
+    };
+
+    const handlePhotoChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Optimistik yeniləmə - dərhal ekranda göstər
+        const fakePreview = URL.createObjectURL(file);
+        setProfile(prev => ({ ...prev, profileImageUrl: fakePreview }));
+
+        setUploadingPhoto(true);
+        try {
+            const compressed = await compressImage(file);
+            
+            const formData = new FormData();
+            formData.append('file', compressed);
+
+            // Backend-ə göndəririk. Backend 200 OK qaytaracaq, yükləmə background-da gedəcək.
+            await api.put('/profile/changePhoto', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            
+            // Background-da yükləndiyi üçün dərhal alert verməyə bilərik, yaxud "Yüklənir..." mesajı qala bilər.
+            // setProfile(prev => ({ ...prev, profileImageUrl: imageUrl })); // Bu artıq backend tərəfindən async ediləcək
+            
+        } catch (error) {
+            console.error('Profil şəkli dəyişdirilərkən xəta:', error);
+            alert('Xəta baş verdi. Yenidən cəhd edin.');
+        } finally {
+            setUploadingPhoto(false);
+        }
+    };
 
     const handlePasswordChange = async () => {
         if (!passwordData.oldPassword || !passwordData.newPassword) {
@@ -327,8 +405,31 @@ const Profile = () => {
                                     {activeTab === 'profil' ? (
                                         <div style={{ textAlign: 'left', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
                                             <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '3rem' }}>
-                                                <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                                                    <UserIcon size={40} />
+                                                <div style={{ position: 'relative', width: '100px', height: '100px', flexShrink: 0 }}>
+                                                    {uploadingPhoto ? (
+                                                        <div style={{ width: '100%', height: '100%', borderRadius: '50%', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <div className="animate-spin" style={{ width: '24px', height: '24px', border: '2px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <img 
+                                                                src={profile?.profileImageUrl || 'https://static.vecteezy.com/system/resources/previews/007/335/692/non_2x/account-icon-template-vector.jpg'} 
+                                                                alt={profile?.name}
+                                                                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '3px solid #fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}
+                                                            />
+                                                            <label style={{ 
+                                                                position: 'absolute', bottom: '0', right: '0', 
+                                                                backgroundColor: 'var(--accent)', color: '#fff', 
+                                                                width: '32px', height: '32px', borderRadius: '50%', 
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                                                                transition: 'transform 0.2s'
+                                                            }}>
+                                                                <Camera size={16} />
+                                                                <input type="file" hidden accept="image/*" onChange={handlePhotoChange} />
+                                                            </label>
+                                                        </>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <h2 style={{ fontSize: '1.4rem', color: '#333' }}>{profile?.name || user?.name}</h2>
