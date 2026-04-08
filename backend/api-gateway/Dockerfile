@@ -1,17 +1,13 @@
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM gradle:8.12.1-jdk21-alpine AS build
 WORKDIR /app
 
-# Copy Gradle wrapper and build files first so the wrapper jar is available
-COPY gradlew .
-COPY gradle gradle
+# Copy build files and source code
 COPY build.gradle .
 COPY settings.gradle .
-RUN chmod +x ./gradlew
-
-# Then copy application source
 COPY src src
 
-RUN ./gradlew bootJar --no-daemon
+# Build the executable jar using the Gradle image
+RUN gradle bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
