@@ -111,4 +111,9 @@ public class AdminService {
         mediaClient.deleteAll();
     }
 
+
+    public void getReports(){
+        
+    }
+
 }

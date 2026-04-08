@@ -3,7 +3,7 @@ package com.swaply.productservice.repository.jpa;
 import com.swaply.productservice.entity.Product;
 import com.swaply.productservice.utils.enums.ProductCategory;
 import com.swaply.productservice.utils.enums.ProductStatus;
-import feign.Param;
+import org.springframework.data.repository.query.Param;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

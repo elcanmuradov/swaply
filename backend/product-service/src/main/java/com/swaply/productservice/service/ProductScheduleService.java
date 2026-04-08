@@ -21,7 +21,7 @@ public class ProductScheduleService {
 
     private final ProductRepository productRepository;
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 12 0 * * *", zone = "Asia/Baku")
     @Transactional
     public void checkAndExpireProducts() {
         log.info("Product status yoxlama prosesi başladı...");

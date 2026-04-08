@@ -100,7 +100,7 @@ public class MockDataInitializer implements CommandLineRunner {
                     .isDelivery(i % 2 == 0)
                     .images(new ArrayList<>())
                     .viewers((long) (Math.random() * 500))
-                    .createdAt(LocalDateTime.now())
+                    .createdAt(LocalDateTime.now().minusDays(30))
                     .build();
 
             p.addImage(ProductImage.builder()
