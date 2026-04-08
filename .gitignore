@@ -39,3 +39,6 @@ build/
 *.swp
 *.swo
 
+# Environment variables (credentials)
+.env
+
