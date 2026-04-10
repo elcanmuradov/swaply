@@ -30,6 +30,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Nginx'in dinlediği port
 EXPOSE 80
+EXPOSE 443
 
 # Nginx'i foreground modda çalıştır
 CMD ["nginx", "-g", "daemon off;"]

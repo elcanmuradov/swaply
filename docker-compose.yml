@@ -176,7 +176,7 @@ services:
     depends_on:
       redis: { condition: service_healthy }
     environment:
-      AWS_ENABLED: ${AWS_ENABLED:-false}
+      AWS_ENABLED: ${AWS_ENABLED:-true}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
       AWS_REGION: ${AWS_REGION:-eu-north-1}
@@ -219,6 +219,9 @@ services:
         condition: service_healthy
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/ssl:ro
     networks:
       - microservices-net
 
