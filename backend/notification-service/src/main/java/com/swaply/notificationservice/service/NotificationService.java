@@ -1,9 +1,9 @@
 package com.swaply.notificationservice.service;
 
 import com.swaply.notificationservice.dto.VerificationRequest;
-import com.swaply.notificationservice.exception.NotificationException;
 import com.swaply.notificationservice.utils.constants.EmailContext;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
@@ -22,43 +22,48 @@ public class NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
-    private final SesV2Client sesV2Client;
+    private final ObjectProvider<SesV2Client> sesV2ClientProvider;
 
-    @Value("${FROM_EMAIL}")
+    @Value("${FROM_EMAIL:}")
     private String fromEmail;
 
-    public NotificationService(SesV2Client sesV2Client) {
-        this.sesV2Client = sesV2Client;
+    public NotificationService(ObjectProvider<SesV2Client> sesV2ClientProvider) {
+        this.sesV2ClientProvider = sesV2ClientProvider;
     }
 
     public void sendVerificationEmail(VerificationRequest request) {
-        try {
-        SendEmailRequest emailRequest = SendEmailRequest.builder()
-            .fromEmailAddress(fromEmail)
-            .destination(Destination.builder()
-                .toAddresses(request.getEmail())
-                .build())
-            .content(EmailContent.builder()
-                .simple(Message.builder()
-                    .subject(Content.builder()
-                        .data("Your verification code is...")
-                        .charset("UTF-8")
+        SesV2Client sesV2Client = sesV2ClientProvider.getIfAvailable();
+        if (sesV2Client == null || fromEmail == null || fromEmail.isBlank()) {
+            log.warn("Email sending is disabled or not configured; skipping SES verification email for {}", request.getEmail());
+        } else {
+            try {
+                SendEmailRequest emailRequest = SendEmailRequest.builder()
+                    .fromEmailAddress(fromEmail)
+                    .destination(Destination.builder()
+                        .toAddresses(request.getEmail())
                         .build())
-                    .body(Body.builder()
-                        .html(Content.builder()
-                            .data(EmailContext.setToken(request.getToken()))
-                            .charset("UTF-8")
+                    .content(EmailContent.builder()
+                        .simple(Message.builder()
+                            .subject(Content.builder()
+                                .data("Your verification code is...")
+                                .charset("UTF-8")
+                                .build())
+                            .body(Body.builder()
+                                .html(Content.builder()
+                                    .data(EmailContext.setToken(request.getToken()))
+                                    .charset("UTF-8")
+                                    .build())
+                                .build())
                             .build())
                         .build())
-                    .build())
-                .build())
-            .build();
+                    .build();
 
-        sesV2Client.sendEmail(emailRequest);
-        log.info("Email has been sent to {}", request.getEmail());
+                sesV2Client.sendEmail(emailRequest);
+                log.info("Email has been sent to {}", request.getEmail());
 
-    } catch (SdkException e) {
-        throw new NotificationException(e.getMessage());
+            } catch (SdkException e) {
+                log.warn("SES email send failed for {}: {}", request.getEmail(), e.getMessage());
+            }
         }
     }
 
