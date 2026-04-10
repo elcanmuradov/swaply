@@ -1,6 +1,7 @@
 package com.swaply.notificationservice.service;
 
 import com.swaply.notificationservice.dto.VerificationRequest;
+import com.swaply.notificationservice.exception.NotificationException;
 import com.swaply.notificationservice.utils.constants.EmailContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.ObjectProvider;
@@ -27,14 +28,22 @@ public class NotificationService {
     @Value("${FROM_EMAIL:}")
     private String fromEmail;
 
+    @Value("${AWS_ENABLED:true}")
+    private boolean awsEnabled;
+
     public NotificationService(ObjectProvider<SesV2Client> sesV2ClientProvider) {
         this.sesV2ClientProvider = sesV2ClientProvider;
     }
 
     public void sendVerificationEmail(VerificationRequest request) {
         SesV2Client sesV2Client = sesV2ClientProvider.getIfAvailable();
-        if (sesV2Client == null || fromEmail == null || fromEmail.isBlank()) {
+        if (!awsEnabled) {
             log.warn("Email sending is disabled or not configured; skipping SES verification email for {}", request.getEmail());
+            return;
+        }
+
+        if (sesV2Client == null || fromEmail == null || fromEmail.isBlank()) {
+            throw new NotificationException("SES client or FROM_EMAIL is not configured");
         } else {
             try {
                 SendEmailRequest emailRequest = SendEmailRequest.builder()
@@ -63,6 +72,7 @@ public class NotificationService {
 
             } catch (SdkException e) {
                 log.warn("SES email send failed for {}: {}", request.getEmail(), e.getMessage());
+                throw new NotificationException("SES email send failed: " + e.getMessage());
             }
         }
     }
