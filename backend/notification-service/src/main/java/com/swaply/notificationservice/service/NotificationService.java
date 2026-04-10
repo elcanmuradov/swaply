@@ -5,17 +5,14 @@ import com.swaply.notificationservice.exception.NotificationException;
 import com.swaply.notificationservice.utils.constants.EmailContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import software.amazon.awssdk.core.exception.SdkException;
-import software.amazon.awssdk.services.sesv2.SesV2Client;
-import software.amazon.awssdk.services.sesv2.model.Body;
-import software.amazon.awssdk.services.sesv2.model.Content;
-import software.amazon.awssdk.services.sesv2.model.Destination;
-import software.amazon.awssdk.services.sesv2.model.EmailContent;
-import software.amazon.awssdk.services.sesv2.model.Message;
-import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 
 @Service
@@ -23,56 +20,42 @@ public class NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
-    private final ObjectProvider<SesV2Client> sesV2ClientProvider;
+    private final ObjectProvider<JavaMailSender> mailSenderProvider;
 
     @Value("${FROM_EMAIL:}")
     private String fromEmail;
 
-    @Value("${AWS_ENABLED:true}")
-    private boolean awsEnabled;
+    @Value("${MAIL_ENABLED:true}")
+    private boolean mailEnabled;
 
-    public NotificationService(ObjectProvider<SesV2Client> sesV2ClientProvider) {
-        this.sesV2ClientProvider = sesV2ClientProvider;
+    public NotificationService(ObjectProvider<JavaMailSender> mailSenderProvider) {
+        this.mailSenderProvider = mailSenderProvider;
     }
 
     public void sendVerificationEmail(VerificationRequest request) {
-        SesV2Client sesV2Client = sesV2ClientProvider.getIfAvailable();
-        if (!awsEnabled) {
-            log.warn("Email sending is disabled or not configured; skipping SES verification email for {}", request.getEmail());
+        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+        if (!mailEnabled) {
+            log.warn("Email sending is disabled; skipping verification email for {}", request.getEmail());
             return;
         }
 
-        if (sesV2Client == null || fromEmail == null || fromEmail.isBlank()) {
-            throw new NotificationException("SES client or FROM_EMAIL is not configured");
+        if (mailSender == null || fromEmail == null || fromEmail.isBlank()) {
+            throw new NotificationException("JavaMailSender or FROM_EMAIL is not configured");
         } else {
             try {
-                SendEmailRequest emailRequest = SendEmailRequest.builder()
-                    .fromEmailAddress(fromEmail)
-                    .destination(Destination.builder()
-                        .toAddresses(request.getEmail())
-                        .build())
-                    .content(EmailContent.builder()
-                        .simple(Message.builder()
-                            .subject(Content.builder()
-                                .data("Your verification code is...")
-                                .charset("UTF-8")
-                                .build())
-                            .body(Body.builder()
-                                .html(Content.builder()
-                                    .data(EmailContext.setToken(request.getToken()))
-                                    .charset("UTF-8")
-                                    .build())
-                                .build())
-                            .build())
-                        .build())
-                    .build();
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+                helper.setFrom(fromEmail);
+                helper.setTo(request.getEmail());
+                helper.setSubject("Your verification code is...");
+                helper.setText(EmailContext.setToken(request.getToken()), true);
 
-                sesV2Client.sendEmail(emailRequest);
+                mailSender.send(message);
                 log.info("Email has been sent to {}", request.getEmail());
 
-            } catch (SdkException e) {
-                log.warn("SES email send failed for {}: {}", request.getEmail(), e.getMessage());
-                throw new NotificationException("SES email send failed: " + e.getMessage());
+            } catch (MessagingException | RuntimeException e) {
+                log.warn("SMTP email send failed for {}: {}", request.getEmail(), e.getMessage());
+                throw new NotificationException("SMTP email send failed: " + e.getMessage());
             }
         }
     }
