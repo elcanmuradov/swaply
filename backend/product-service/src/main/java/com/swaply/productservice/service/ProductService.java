@@ -223,6 +223,7 @@ public class ProductService {
 
         if (!publicIds.isEmpty()) mediaClient.deleteImages(publicIds);
         productRepository.deleteById(productId);
+        elasticProductRepository.deleteById(String.valueOf(productId));
     }
 
     @CacheEvict(value = "products", allEntries = true)
