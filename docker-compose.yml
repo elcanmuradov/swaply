@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: secret123
       POSTGRES_DB: admin
     ports:
-      - "5436:5432"
+      - "127.0.0.1:5436:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
@@ -42,7 +42,7 @@ services:
     image: mongo:latest
     container_name: microservices-mongo
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: secret123
@@ -66,16 +66,18 @@ services:
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"
     volumes:
       - elastic-data:/usr/share/elasticsearch/data
     networks:
       - microservices-net
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'" ]
-      interval: 20s
+      # Accept any HTTP 200 response; cluster color can be red during warm-up.
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1" ]
+      interval: 15s
       timeout: 10s
-      retries: 5
+      retries: 20
+      start_period: 60s
 
   # ==================== USER SERVICE ====================
   user-service:
