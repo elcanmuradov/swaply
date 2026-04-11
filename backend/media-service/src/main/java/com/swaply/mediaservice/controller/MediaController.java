@@ -21,7 +21,7 @@ public class MediaController {
 
     @PostMapping("/upload-multiple")
     public ResponseEntity<ApiResponse<List<Map<String, String>>>> uploadMultipleFiles(
-            @RequestParam("files") List<MultipartFile> files) {
+            @RequestPart("files") List<MultipartFile> files) {
 
         return ResponseEntity.ok(ApiResponse.success(mediaService.uploadFiles(files)));
     }

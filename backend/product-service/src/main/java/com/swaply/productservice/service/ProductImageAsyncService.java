@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
@@ -31,18 +32,25 @@ public class ProductImageAsyncService {
     private final ElasticProductRepository elasticProductRepository;
 
     @Async("productTaskExecutor")
+    @Transactional
     public void uploadProductImagesAsync(List<MultipartFile> files, UUID productId) {
         try {
             log.info("Starting background image upload for product: {}", productId);
             var response = mediaClient.uploadMultipleFiles(files);
 
             if (response == null || response.getData() == null) {
+                log.warn("Media upload returned empty response for product: {}", productId);
                 return;
             }
 
             Product product = productRepository.findById(productId).orElseThrow();
             List<Map<String, String>> uploadResults = response.getData();
-            List<ProductImage> list = product.getImages();
+            List<ProductImage> list = product.getImages() != null ? product.getImages() : new ArrayList<>();
+
+            if (uploadResults.isEmpty()) {
+                log.warn("Media upload returned zero files for product: {}", productId);
+                return;
+            }
 
             AtomicInteger i = new AtomicInteger();
             uploadResults.forEach(res -> {
@@ -55,9 +63,10 @@ public class ProductImageAsyncService {
                 list.add(image);
             });
 
+            product.setImages(list);
             productRepository.save(product);
             syncToElastic(product);
-            log.info("Product images updated successfully for product: {}", productId);
+            log.info("Product images updated successfully for product: {}, imageCount: {}", productId, list.size());
         } catch (Exception e) {
             log.error("Error uploading images for product {}", productId, e);
         }
