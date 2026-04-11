@@ -23,6 +23,8 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import api from '../api/axios';
 
+const PRODUCT_PREVIEW_CACHE_KEY = 'productImagePreviewCache';
+
 const Profile = () => {
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
@@ -33,6 +35,14 @@ const Profile = () => {
     const [fetchingProducts, setFetchingProducts] = useState(false);
     const [activeTab, setActiveTab] = useState('elanlar');
     const [activeSubTab, setActiveSubTab] = useState('ACTIVE');
+
+    const getCachedPreviewImage = (productId) => {
+        const cache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
+        const entry = cache?.[productId];
+        if (!entry || !Array.isArray(entry.urls) || entry.urls.length === 0) return null;
+        if (entry.expiresAt && entry.expiresAt <= Date.now()) return null;
+        return entry.urls[0] || null;
+    };
 
     // Password change state
     const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '' });
@@ -332,7 +342,7 @@ const Profile = () => {
                                                 {/* Left: Image */}
                                                 <div className="product-img" style={{ width: '120px', height: '90px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, backgroundColor: '#f0f0f0' }}>
                                                     <img
-                                                        src={product.imageUrls?.[0] || 'https://via.placeholder.com/120x90'}
+                                                        src={product.imageUrls?.[0] || getCachedPreviewImage(product.id) || 'https://via.placeholder.com/120x90'}
                                                         alt={product.title}
                                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                                     />

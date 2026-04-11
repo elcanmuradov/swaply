@@ -5,6 +5,8 @@ import { Camera, MapPin, Tag, Info, Check, GripVertical, ArrowLeft, ArrowRight }
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 
+const PRODUCT_PREVIEW_CACHE_KEY = 'productImagePreviewCache';
+
 const AddProduct = () => {
     const navigate = useNavigate();
     const [images, setImages] = useState([]); // { file, preview } objects
@@ -194,11 +196,21 @@ const AddProduct = () => {
                 formDataPayload.append('files', file);
             });
 
-            await api.post(`/user/${user.id}/product/create`, formDataPayload, {
+            const response = await api.post(`/user/${user.id}/product/create`, formDataPayload, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
             });
+
+            const createdProductId = response?.data?.data?.id;
+            if (createdProductId && images.length > 0) {
+                const existingCache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
+                existingCache[createdProductId] = {
+                    urls: images.map((img) => img.preview).filter(Boolean),
+                    expiresAt: Date.now() + 10 * 60 * 1000
+                };
+                sessionStorage.setItem(PRODUCT_PREVIEW_CACHE_KEY, JSON.stringify(existingCache));
+            }
 
             setLoadingMessage('Məhsul uğurla yaradıldı!');
             alert("Elan uğurla yerləşdirildi!");

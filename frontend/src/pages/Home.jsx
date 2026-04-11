@@ -4,6 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import api from '../api/axios';
 
+const PRODUCT_PREVIEW_CACHE_KEY = 'productImagePreviewCache';
+
 const Home = () => {
     const categories = [
         { id: 'ALL', label: 'Hamısı' },
@@ -30,11 +32,25 @@ const Home = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const [previewCache, setPreviewCache] = useState({});
 
     const location = useLocation();
     const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
     const searchQuery = queryParams.get('search');
+
+    const cleanAndSetPreviewCache = (rawCache) => {
+        const now = Date.now();
+        const cleaned = Object.entries(rawCache || {}).reduce((acc, [productId, entry]) => {
+            if (entry && Array.isArray(entry.urls) && entry.urls.length > 0 && (!entry.expiresAt || entry.expiresAt > now)) {
+                acc[productId] = entry;
+            }
+            return acc;
+        }, {});
+        setPreviewCache(cleaned);
+        sessionStorage.setItem(PRODUCT_PREVIEW_CACHE_KEY, JSON.stringify(cleaned));
+        return cleaned;
+    };
 
     const fetchProducts = async (category = 'ALL', search = null, page = 0) => {
         setLoading(true);
@@ -49,11 +65,31 @@ const Home = () => {
             const response = await api.get(url);
 
             if (search) {
-                setProducts(response.data.data || []);
+                const fetchedProducts = response.data.data || [];
+                setProducts(fetchedProducts);
                 setTotalPages(0);
+
+                const currentCache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
+                const prunedCache = { ...currentCache };
+                fetchedProducts.forEach((product) => {
+                    if (product?.id && Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
+                        delete prunedCache[product.id];
+                    }
+                });
+                cleanAndSetPreviewCache(prunedCache);
             } else {
-                setProducts(response.data.data.content || []);
+                const fetchedProducts = response.data.data.content || [];
+                setProducts(fetchedProducts);
                 setTotalPages(response.data.data.totalPages || 0);
+
+                const currentCache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
+                const prunedCache = { ...currentCache };
+                fetchedProducts.forEach((product) => {
+                    if (product?.id && Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
+                        delete prunedCache[product.id];
+                    }
+                });
+                cleanAndSetPreviewCache(prunedCache);
             }
         } catch (error) {
             console.error("Məhsullar yüklənərkən xəta baş verdi:", error);
@@ -69,6 +105,11 @@ const Home = () => {
             setSearchTerm(searchQuery);
         }
     }, [searchQuery]);
+
+    useEffect(() => {
+        const rawCache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
+        cleanAndSetPreviewCache(rawCache);
+    }, []);
 
     // Handle initial fetch and changes
     useEffect(() => {
@@ -184,7 +225,7 @@ const Home = () => {
                         <div style={{ textAlign: 'center', padding: '3rem', gridColumn: '1/-1' }}>Yüklənir...</div>
                     ) : products.length > 0 ? (
                         products.map((product) => (
-                            <ListingCard key={product.id} product={product} />
+                            <ListingCard key={product.id} product={product} previewCache={previewCache} />
                         ))
                     ) : (
                         <div style={{ textAlign: 'center', padding: '3rem', gridColumn: '1/-1', color: 'var(--text-light)' }}>Heç bir məhsul tapılmadı.</div>
@@ -231,8 +272,12 @@ const Home = () => {
     );
 };
 
-const ListingCard = ({ product }) => {
+const ListingCard = ({ product, previewCache }) => {
     const navigate = useNavigate();
+    const previewImage = previewCache?.[product.id]?.urls?.[0];
+    const primaryImage = product.imageUrls && product.imageUrls.length > 0
+        ? product.imageUrls[0]
+        : previewImage;
 
     return (
         <motion.div
@@ -257,8 +302,8 @@ const ListingCard = ({ product }) => {
                 justifyContent: 'center',
                 color: '#999'
             }}>
-                {product.imageUrls && product.imageUrls.length > 0 ? (
-                    <img src={product.imageUrls[0]} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {primaryImage ? (
+                    <img src={primaryImage} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                     <span>Şəkil yoxdur</span>
                 )}

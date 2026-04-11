@@ -5,6 +5,16 @@ import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 
+const PRODUCT_PREVIEW_CACHE_KEY = 'productImagePreviewCache';
+
+const getCachedPreviewImage = (productId) => {
+    const cache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
+    const entry = cache?.[productId];
+    if (!entry || !Array.isArray(entry.urls) || entry.urls.length === 0) return null;
+    if (entry.expiresAt && entry.expiresAt <= Date.now()) return null;
+    return entry.urls[0] || null;
+};
+
 const Favorites = () => {
     const { user, token } = useContext(AuthContext);
     const [favoriteProducts, setFavoriteProducts] = useState([]);
@@ -99,6 +109,10 @@ const Favorites = () => {
 };
 
 const ListingCard = ({ product, onRemove }) => {
+    const primaryImage = (product.imageUrls && product.imageUrls.length > 0)
+        ? product.imageUrls[0]
+        : getCachedPreviewImage(product.id);
+
     return (
         <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -143,8 +157,8 @@ const ListingCard = ({ product, onRemove }) => {
                     alignItems: 'center',
                     justifyContent: 'center'
                 }}>
-                    {product.imageUrls && product.imageUrls.length > 0 ? (
-                        <img src={product.imageUrls[0]} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {primaryImage ? (
+                        <img src={primaryImage} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                         <span style={{ color: '#999' }}>Şəkil yoxdur</span>
                     )}
