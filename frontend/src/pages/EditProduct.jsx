@@ -55,8 +55,8 @@ const EditProduct = () => {
                     price: p.price || '',
                     description: p.description || '',
                     cityId: cities.indexOf(p.city) !== -1 ? cities.indexOf(p.city) : 0,
-                    isNew: p.isNew || false,
-                    isDelivery: p.isDelivery || false
+                    isNew: p.isNew === true || p.isNew === 'true' || p.isNew === 1,
+                    isDelivery: p.isDelivery === true || p.isDelivery === 'true' || p.isDelivery === 1
                 });
             } catch (err) {
                 console.error("Məhsul yüklənərkən xəta:", err);

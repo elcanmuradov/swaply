@@ -232,12 +232,14 @@ const Home = () => {
 };
 
 const ListingCard = ({ product }) => {
+    const navigate = useNavigate();
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -5 }}
-            onClick={() => window.location.href = `/product/${product.id}`}
+            onClick={() => navigate(`/product/${product.id}`)}
             style={{
                 backgroundColor: 'var(--surface)',
                 borderRadius: 'var(--radius)',
