@@ -1,6 +1,5 @@
 package com.swaply.productservice.service;
 
-import com.swaply.productservice.client.MediaClient;
 import com.swaply.productservice.client.UserClient;
 import com.swaply.productservice.document.ProductDocument;
 import com.swaply.productservice.dto.PagedResponse;
@@ -24,11 +23,12 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.stream.Collectors;
 
@@ -41,7 +41,6 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
     private final UserClient userClient;
-    private final MediaClient mediaClient;
     private final ElasticProductRepository elasticProductRepository;
     private final ProductImageAsyncService productImageAsyncService;
 
@@ -62,7 +61,14 @@ public class ProductService {
         productRepository.save(product);
 
         if (files != null && !files.isEmpty()) {
-              productImageAsyncService.uploadProductImagesAsync(files, product.getId());
+            List<MultipartFile> asyncSafeFiles = files.stream()
+                    .filter(Objects::nonNull)
+                    .filter(file -> !file.isEmpty())
+                    .map(this::toInMemoryMultipartFile)
+                    .toList();
+            if (!asyncSafeFiles.isEmpty()) {
+                productImageAsyncService.uploadProductImagesAsync(asyncSafeFiles, product.getId());
+            }
         }
         productImageAsyncService.syncProductToElasticAsync(product.getId());
 
@@ -81,6 +87,19 @@ public class ProductService {
                 .status(product.getStatus())
                 .images(new ArrayList<>())
                 .build();
+    }
+
+    private MultipartFile toInMemoryMultipartFile(MultipartFile file) {
+        try {
+            return new InMemoryMultipartFile(
+                    file.getName(),
+                    file.getOriginalFilename(),
+                    file.getContentType(),
+                    file.getBytes()
+            );
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to buffer uploaded file in memory", e);
+        }
     }
 
 

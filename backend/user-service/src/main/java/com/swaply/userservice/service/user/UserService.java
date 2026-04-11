@@ -3,6 +3,8 @@ package com.swaply.userservice.service.user;
 import com.swaply.userservice.client.ProductClient;
 import com.swaply.userservice.dto.user.ChangePasswordRequest;
 import com.swaply.userservice.dto.user.UserDto;
+import feign.FeignException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.multipart.MultipartFile;
 import com.swaply.userservice.entity.User;
 import com.swaply.userservice.exception.AuthException;
@@ -19,6 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
@@ -66,11 +69,26 @@ public class UserService {
     public List<UUID> getUserFavorites(Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow(() -> new AuthException(authentication.getName() + " User not found"));
         List<UUID> favorites = new ArrayList<>();
-        user.getFavoritedProductsIds().forEach((id) -> {
-            if(productClient.isActiveProduct(id).getData()) {
-                favorites.add(id);
+        List<UUID> existingFavoriteIds = Optional.ofNullable(user.getFavoritedProductsIds()).orElse(new ArrayList<>());
+        List<UUID> validFavoriteIds = new ArrayList<>();
+
+        existingFavoriteIds.forEach(id -> {
+            try {
+                Boolean active = productClient.isActiveProduct(id).getData();
+                if (Boolean.TRUE.equals(active)) {
+                    favorites.add(id);
+                }
+                validFavoriteIds.add(id);
+            } catch (FeignException.NotFound ex) {
+                log.warn("Favorite product no longer exists, removing stale id: {}", id);
             }
         });
+
+        if (validFavoriteIds.size() != existingFavoriteIds.size()) {
+            user.setFavoritedProductsIds(validFavoriteIds);
+            userRepository.save(user);
+        }
+
         return favorites;
     }
 
