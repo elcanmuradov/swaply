@@ -5,6 +5,8 @@ import { Heart, Share2, MapPin, Calendar, ShieldCheck, ChevronLeft, ChevronRight
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 
+const PRODUCT_PREVIEW_CACHE_KEY = 'productImagePreviewCache';
+
 const ProductDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -18,6 +20,14 @@ const ProductDetail = () => {
     const actingUserId = user?.id || "00000000-0000-0000-0000-000000000000";
 
     const toBoolean = (value) => value === true || value === 'true' || value === 1;
+
+    const getCachedPreviewImages = (productId) => {
+        const cache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
+        const entry = cache?.[productId];
+        if (!entry || !Array.isArray(entry.urls) || entry.urls.length === 0) return [];
+        if (entry.expiresAt && entry.expiresAt <= Date.now()) return [];
+        return entry.urls;
+    };
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -46,6 +56,17 @@ const ProductDetail = () => {
             fetchProduct();
         }
     }, [id, actingUserId]);
+
+    useEffect(() => {
+        if (!product?.id) return;
+        if (!Array.isArray(product.imageUrls) || product.imageUrls.length === 0) return;
+
+        const cache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
+        if (cache[product.id]) {
+            delete cache[product.id];
+            sessionStorage.setItem(PRODUCT_PREVIEW_CACHE_KEY, JSON.stringify(cache));
+        }
+    }, [product]);
 
     const nextImage = () => {
         if (!product?.imageUrls?.length) return;
@@ -109,7 +130,7 @@ const ProductDetail = () => {
                         id: product.id,
                         title: product.title,
                         price: product.price,
-                        imageUrl: product.imageUrls?.[0]
+                        imageUrl: images?.[0]
                     }
                 }
             });
@@ -161,9 +182,12 @@ const ProductDetail = () => {
     const isNewProduct = toBoolean(product.isNew);
     const hasDelivery = toBoolean(product.isDelivery);
 
+    const cachedImages = getCachedPreviewImages(product.id);
     const images = product.imageUrls && product.imageUrls.length > 0
         ? product.imageUrls
-        : ["https://via.placeholder.com/800x600?text=Şəkil+Yoxdur"];
+        : cachedImages.length > 0
+            ? cachedImages
+            : ["https://via.placeholder.com/800x600?text=Şəkil+Yoxdur"];
 
     const sellerName = seller?.name || `İstifadəçi ${product.userId ? product.userId.toString().substring(0, 5) : 'SM'}`;
 
