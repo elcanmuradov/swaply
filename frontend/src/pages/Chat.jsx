@@ -19,6 +19,41 @@ const Chat = () => {
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
     const [uploading, setUploading] = useState(false);
+    const [myProfileImageUrl, setMyProfileImageUrl] = useState('');
+
+    const getInitials = (name) => {
+        if (!name) return '?';
+        return name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((part) => part[0]?.toUpperCase())
+            .join('') || '?';
+    };
+
+    const resolveOnlineStatus = (conversation) => {
+        const explicitOnline =
+            conversation?.isOnline ??
+            conversation?.online ??
+            (typeof conversation?.onlineStatus === 'string' ? conversation.onlineStatus.toUpperCase() === 'ONLINE' : undefined);
+
+        return Boolean(explicitOnline);
+    };
+
+    const resolveProfileImage = async (targetUserId) => {
+        if (!targetUserId) return '';
+        try {
+            const profileRes = await axios.get(`/api/profile?id=${targetUserId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const profileData = profileRes.data?.data || profileRes.data;
+            return profileData?.profileImageUrl || '';
+        } catch (error) {
+            return '';
+        }
+    };
 
     const fetchConversations = async () => {
         try {
@@ -29,13 +64,24 @@ const Chat = () => {
                 }
             });
 
-            const conversationUsers = res.data.map(conv => ({
-                id: conv.userId,
-                name: conv.name,
-                lastMsg: conv.lastMessage,
-                time: conv.lastMessageTime ? new Date(conv.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-                unread: conv.unreadCount || 0
-            }));
+            const conversationUsers = await Promise.all(
+                (res.data || []).map(async (conv) => {
+                    const profileImageUrl =
+                        conv.profileImageUrl ||
+                        conv.avatarUrl ||
+                        await resolveProfileImage(conv.userId);
+
+                    return {
+                        id: conv.userId,
+                        name: conv.name,
+                        lastMsg: conv.lastMessage,
+                        time: conv.lastMessageTime ? new Date(conv.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                        unread: conv.unreadCount || 0,
+                        profileImageUrl,
+                        isOnline: resolveOnlineStatus(conv)
+                    };
+                })
+            );
 
             setChats(conversationUsers);
 
@@ -60,7 +106,9 @@ const Chat = () => {
                 name: newUser.name,
                 lastMsg: 'Yeni söhbət',
                 time: '',
-                unread: 0
+                unread: 0,
+                profileImageUrl: newUser.profileImageUrl || newUser.avatarUrl || '',
+                isOnline: Boolean(newUser.isOnline ?? newUser.online)
             });
 
             if (location.state?.product) {
@@ -70,6 +118,26 @@ const Chat = () => {
             window.history.replaceState({}, document.title);
         }
     }, [location.state]);
+
+    useEffect(() => {
+        if (!token) return;
+
+        const fetchOwnProfile = async () => {
+            try {
+                const res = await axios.get('/api/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const myProfile = res.data?.data || res.data;
+                setMyProfileImageUrl(myProfile?.profileImageUrl || '');
+            } catch (error) {
+                setMyProfileImageUrl('');
+            }
+        };
+
+        fetchOwnProfile();
+    }, [token]);
 
     const selectedChatRef = useRef(null);
 
@@ -126,7 +194,8 @@ const Chat = () => {
                                 ...existing,
                                 lastMsg: receivedMessage.content,
                                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                unread: (selectedChatRef.current?.id === senderId ? 0 : (existing.unread || 0) + 1)
+                                unread: (selectedChatRef.current?.id === senderId ? 0 : (existing.unread || 0) + 1),
+                                isOnline: true
                             };
                             return [updatedChat, ...prev.filter(c => c.id !== senderId)];
                         } else {
@@ -258,6 +327,13 @@ const Chat = () => {
         }
     };
 
+    const handleSelectChat = (chat) => {
+        setSelectedChat({ ...chat, unread: 0 });
+        setChats((prev) => prev.map((item) => (
+            item.id === chat.id ? { ...item, unread: 0 } : item
+        )));
+    };
+
     return (
         <div className="container" style={{ padding: '1rem 20px', height: 'calc(100vh - 160px)', maxWidth: '1800px' }}>
             <div className={`glass chat-container ${selectedChat ? 'chat-selected' : ''}`} style={{
@@ -277,28 +353,54 @@ const Chat = () => {
                         {chats.length === 0 && <div style={{ padding: '1rem', color: 'var(--text-light)' }}>Söhbət yoxdur</div>}
                         {chats.map(chat => (
                             <div key={chat.id}
-                                onClick={() => setSelectedChat(chat)}
+                                onClick={() => handleSelectChat(chat)}
                                 style={{
                                     padding: '1.2rem',
                                     borderBottom: '1px solid var(--border)',
                                     display: 'flex',
                                     gap: '12px',
                                     cursor: 'pointer',
-                                    backgroundColor: selectedChat?.id === chat.id ? 'rgba(17, 62, 33, 0.05)' : 'transparent',
+                                    borderLeft: chat.unread > 0 && selectedChat?.id !== chat.id ? '3px solid #ef4444' : '3px solid transparent',
+                                    backgroundColor:
+                                        selectedChat?.id === chat.id
+                                            ? 'rgba(17, 62, 33, 0.05)'
+                                            : chat.unread > 0
+                                                ? 'rgba(239, 68, 68, 0.06)'
+                                                : 'transparent',
                                     transition: 'var(--transition)'
                                 }}>
-                                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                                    {chat.name.substring(0, 2).toUpperCase()}
+                                <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
+                                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, overflow: 'hidden' }}>
+                                        {chat.profileImageUrl ? (
+                                            <img
+                                                src={chat.profileImageUrl}
+                                                alt={chat.name}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                            />
+                                        ) : (
+                                            getInitials(chat.name)
+                                        )}
+                                    </div>
+                                    <span style={{
+                                        position: 'absolute',
+                                        right: 1,
+                                        bottom: 1,
+                                        width: '11px',
+                                        height: '11px',
+                                        borderRadius: '50%',
+                                        backgroundColor: chat.isOnline ? '#22c55e' : '#9ca3af',
+                                        boxShadow: '0 0 0 2px #fff'
+                                    }} />
                                 </div>
                                 <div style={{ flex: 1, overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                        <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.name}</span>
+                                        <span style={{ fontWeight: chat.unread > 0 ? 700 : 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{chat.name}</span>
                                         <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>{chat.time}</span>
                                     </div>
-                                    <div style={{ fontSize: '0.85rem', color: chat.unread > 0 ? 'var(--text)' : 'var(--text-light)', display: 'flex', justifyContent: 'space-between' }}>
+                                    <div style={{ fontSize: '0.85rem', color: chat.unread > 0 ? '#b91c1c' : 'var(--text-light)', display: 'flex', justifyContent: 'space-between' }}>
                                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>{chat.lastMsg}</span>
                                         {chat.unread > 0 && (
-                                            <span style={{ backgroundColor: 'var(--primary)', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '0.7rem' }}>{chat.unread}</span>
+                                            <span style={{ backgroundColor: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 700 }}>{chat.unread}</span>
                                         )}
                                     </div>
                                 </div>
@@ -320,10 +422,35 @@ const Chat = () => {
                                     >
                                         <ChevronLeft size={24} />
                                     </button>
-                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                                        {selectedChat.name.substring(0, 2).toUpperCase()}
+                                    <div style={{ position: 'relative', width: '40px', height: '40px', flexShrink: 0 }}>
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, overflow: 'hidden' }}>
+                                            {selectedChat.profileImageUrl ? (
+                                                <img
+                                                    src={selectedChat.profileImageUrl}
+                                                    alt={selectedChat.name}
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                                />
+                                            ) : (
+                                                getInitials(selectedChat.name)
+                                            )}
+                                        </div>
+                                        <span style={{
+                                            position: 'absolute',
+                                            right: 0,
+                                            bottom: 0,
+                                            width: '10px',
+                                            height: '10px',
+                                            borderRadius: '50%',
+                                            backgroundColor: selectedChat.isOnline ? '#22c55e' : '#9ca3af',
+                                            boxShadow: '0 0 0 2px #fff'
+                                        }} />
                                     </div>
-                                    <span style={{ fontWeight: 700 }}>{selectedChat.name}</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        <span style={{ fontWeight: 700 }}>{selectedChat.name}</span>
+                                        <span style={{ fontSize: '0.75rem', color: selectedChat.isOnline ? '#16a34a' : 'var(--text-light)' }}>
+                                            {selectedChat.isOnline ? 'Online' : 'Offline'}
+                                        </span>
+                                    </div>
                                 </div>
                                 <MoreVertical size={20} color="var(--text-light)" />
                             </div>
@@ -344,31 +471,63 @@ const Chat = () => {
                                     <div key={idx} className="message-wrapper" style={{
                                         alignItems: msg.senderId === user?.id ? 'flex-end' : 'flex-start'
                                     }}>
-                                        <div className="message-item" style={{
-                                            alignSelf: msg.senderId === user?.id ? 'flex-end' : 'flex-start',
-                                            backgroundColor: msg.senderId === user?.id ? 'var(--primary)' : 'var(--bg)',
-                                            color: msg.senderId === user?.id ? 'white' : 'var(--text)',
-                                            borderRadius: msg.senderId === user?.id ? '15px 15px 0 15px' : '15px 15px 15px 0',
-                                            maxWidth: '85%',
-                                            padding: (msg.messageType === 'IMAGE' || msg.messageType === 'VIDEO') ? '5px' : '10px 16px'
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'flex-end',
+                                            gap: '8px',
+                                            flexDirection: msg.senderId === user?.id ? 'row-reverse' : 'row'
                                         }}>
-                                            {msg.messageType === 'IMAGE' ? (
-                                                <img src={msg.content} alt="media" style={{ maxWidth: '100%', borderRadius: '10px', display: 'block' }} />
-                                            ) : msg.messageType === 'VIDEO' ? (
-                                                <video src={msg.content} controls style={{ maxWidth: '100%', borderRadius: '10px', display: 'block' }} />
-                                            ) : (
-                                                msg.content
-                                            )}
+                                            <div style={{
+                                                width: '28px',
+                                                height: '28px',
+                                                borderRadius: '50%',
+                                                backgroundColor: 'var(--accent)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                color: '#fff',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 700,
+                                                overflow: 'hidden',
+                                                flexShrink: 0
+                                            }}>
+                                                {(msg.senderId === user?.id ? myProfileImageUrl : selectedChat?.profileImageUrl) ? (
+                                                    <img
+                                                        src={msg.senderId === user?.id ? myProfileImageUrl : selectedChat?.profileImageUrl}
+                                                        alt={msg.senderId === user?.id ? (user?.name || 'Siz') : selectedChat?.name}
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    />
+                                                ) : (
+                                                    msg.senderId === user?.id ? getInitials(user?.name || 'Siz') : getInitials(selectedChat?.name)
+                                                )}
+                                            </div>
 
-                                            {msg.senderId !== user?.id && !msg.isReported && (
-                                                <button 
-                                                    className="report-button"
-                                                    onClick={() => handleReportMessage(msg.id)}
-                                                    title="Şikayət et"
-                                                >
-                                                    <Flag size={14} />
-                                                </button>
-                                            )}
+                                            <div className="message-item" style={{
+                                                alignSelf: msg.senderId === user?.id ? 'flex-end' : 'flex-start',
+                                                backgroundColor: msg.senderId === user?.id ? 'var(--primary)' : 'var(--bg)',
+                                                color: msg.senderId === user?.id ? 'white' : 'var(--text)',
+                                                borderRadius: msg.senderId === user?.id ? '15px 15px 0 15px' : '15px 15px 15px 0',
+                                                maxWidth: '85%',
+                                                padding: (msg.messageType === 'IMAGE' || msg.messageType === 'VIDEO') ? '5px' : '10px 16px'
+                                            }}>
+                                                {msg.messageType === 'IMAGE' ? (
+                                                    <img src={msg.content} alt="media" style={{ maxWidth: '100%', borderRadius: '10px', display: 'block' }} />
+                                                ) : msg.messageType === 'VIDEO' ? (
+                                                    <video src={msg.content} controls style={{ maxWidth: '100%', borderRadius: '10px', display: 'block' }} />
+                                                ) : (
+                                                    msg.content
+                                                )}
+
+                                                {msg.senderId !== user?.id && !msg.isReported && (
+                                                    <button 
+                                                        className="report-button"
+                                                        onClick={() => handleReportMessage(msg.id)}
+                                                        title="Şikayət et"
+                                                    >
+                                                        <Flag size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                         {msg.isReported && (
                                             <div className="reported-badge">

@@ -1,5 +1,6 @@
 package com.swaply.chatservice.config;
 
+import com.swaply.chatservice.service.OnlineUserTracker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -25,6 +26,8 @@ class StompUser implements Principal {
 @Component
 @RequiredArgsConstructor
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
+
+    private final OnlineUserTracker onlineUserTracker;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -57,6 +60,9 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                             accessor.getSessionAttributes().put("username", username);
                             accessor.setUser(new StompUser(username));
                         }
+
+                        UUID userId = (UUID) accessor.getSessionAttributes().get("userId");
+                        onlineUserTracker.markOnline(userId);
                         
                         // Store token for downstream Feign calls
                         accessor.getSessionAttributes().put("token", "Bearer " + token);
@@ -65,7 +71,10 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                     System.err.println("Token processing error: " + e.getMessage());
                 }
             }
+        } else if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
+            UUID userId = (UUID) accessor.getSessionAttributes().get("userId");
+            onlineUserTracker.markOffline(userId);
         }
         return message;
     }
-}
+}

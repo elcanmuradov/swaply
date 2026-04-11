@@ -14,4 +14,5 @@ public class ConversationDto {
     private String lastMessage;
     private LocalDateTime lastMessageTime;
     private int unreadCount;
+    private boolean isOnline;
 }

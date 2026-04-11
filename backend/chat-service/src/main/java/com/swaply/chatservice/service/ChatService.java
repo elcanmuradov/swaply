@@ -32,6 +32,7 @@ public class ChatService {
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatRepository ChatRepository;
     private final MediaClient mediaClient;
+    private final OnlineUserTracker onlineUserTracker;
 
     public void sendMessageToUser(MessageDto incomingMessage, StompHeaderAccessor accessor) {
         Principal principal = accessor.getUser();
@@ -118,6 +119,7 @@ public class ChatService {
                             .lastMessage(lastMsgOpt.map(Message::getContent).orElse(""))
                             .lastMessageTime(lastMsgOpt.map(Message::getSentAt).orElse(null))
                             .unreadCount(0) // TODO: implement count
+                            .isOnline(onlineUserTracker.isOnline(otherUserId))
                             .build();
                 })
                 .collect(Collectors.toList());
