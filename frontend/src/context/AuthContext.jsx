@@ -9,6 +9,20 @@ const redirectToLogin = () => {
     }
 };
 
+const extractRoleText = (decoded) => {
+    if (!decoded) return '';
+
+    if (Array.isArray(decoded.role)) {
+        return decoded.role.map((r) => String(r)).join(',');
+    }
+
+    if (Array.isArray(decoded.roles)) {
+        return decoded.roles.map((r) => String(r)).join(',');
+    }
+
+    return String(decoded.role || decoded.roles || decoded.authorities || decoded.userRole || '');
+};
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(localStorage.getItem('token') || null);
@@ -37,8 +51,12 @@ export const AuthProvider = ({ children }) => {
                     id: decoded.userId || decoded.id || decoded.sub // prefer userId from JWT
                 };
 
+                const roleText = extractRoleText(decoded).toUpperCase();
+                const isAdminToken = roleText.includes('ADMIN');
+                const validationUrl = isAdminToken ? '/api/admin/stats' : '/api/profile';
+
                 // Extra server-side validation so invalid JWTs are logged out immediately on app load.
-                const profileResponse = await fetch('/api/profile', {
+                const profileResponse = await fetch(validationUrl, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
