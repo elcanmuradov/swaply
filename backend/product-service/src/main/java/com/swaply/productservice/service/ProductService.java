@@ -1,5 +1,6 @@
 package com.swaply.productservice.service;
 
+import com.swaply.productservice.client.MediaClient;
 import com.swaply.productservice.client.UserClient;
 import com.swaply.productservice.document.ProductDocument;
 import com.swaply.productservice.dto.PagedResponse;
@@ -43,7 +44,7 @@ public class ProductService {
     private final UserClient userClient;
     private final ElasticProductRepository elasticProductRepository;
     private final ProductImageAsyncService productImageAsyncService;
-
+    private final MediaClient mediaClient;
 
     @CacheEvict(value = "products", allEntries = true)
     public CreateProductResponse createProduct(CreateProductRequest createProductRequest, List<MultipartFile> files) {
