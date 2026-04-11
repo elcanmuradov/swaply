@@ -12,6 +12,7 @@ const ProductDetail = () => {
     const [seller, setSeller] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [shareNotice, setShareNotice] = useState('');
     const { user, token } = useContext(AuthContext);
 
     const actingUserId = user?.id || "00000000-0000-0000-0000-000000000000";
@@ -115,6 +116,34 @@ const ProductDetail = () => {
         }
     };
 
+    const copyTextToClipboard = async (text) => {
+        if (navigator?.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+
+        const input = document.createElement('input');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+    };
+
+    const handleShareClick = async () => {
+        const shareUrl = `${window.location.origin}/product/${id}`;
+
+        try {
+            await copyTextToClipboard(shareUrl);
+            setShareNotice('Mehsul linki kopyalandi.');
+        } catch (error) {
+            console.error('Link kopyalanarken xeta bas verdi:', error);
+            setShareNotice('Link kopyalanmadi. Yeniden cehd edin.');
+        }
+
+        window.setTimeout(() => setShareNotice(''), 2200);
+    };
+
     if (loading) {
         return (
             <div className="container" style={{ padding: '5rem 20px', display: 'flex', justifyContent: 'center' }}>
@@ -206,10 +235,11 @@ const ProductDetail = () => {
                             >
                                 <Heart size={20} fill={isFavorited ? "#f43f5e" : "none"} color={isFavorited ? "#f43f5e" : "currentColor"} />
                             </button>
-                            <button className="icon-btn share" title="Paylaş">
+                            <button className="icon-btn share" title="Paylaş" onClick={handleShareClick}>
                                 <Share2 size={20} />
                             </button>
                         </div>
+                        {shareNotice && <div className="share-notice">{shareNotice}</div>}
 
                         <div className="product-metadata">
                             <div className="metadata-item">
@@ -439,6 +469,14 @@ const ProductDetail = () => {
 
                 .icon-btn.favorite { color: #f43f5e; }
                 .icon-btn.favorite:hover { background: #fff1f2; }
+
+                .share-notice {
+                    margin-top: -1.2rem;
+                    margin-bottom: 1.2rem;
+                    color: #0f766e;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                }
 
                 .product-metadata {
                     display: flex;

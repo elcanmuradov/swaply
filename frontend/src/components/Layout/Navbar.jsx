@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, PlusCircle, MessageSquare, Bell, User, LogIn, Menu, X, LogOut, Heart, ShieldCheck, Home, Settings, ShoppingBag, ChevronRight } from 'lucide-react';
 import { AuthContext } from '../../context/AuthContext';
+import mainLogo from '../../imgs/mainlogo.png';
 
 const DrawerLink = ({ to, icon: Icon, label, onClick, color = 'inherit' }) => (
     <Link to={to} onClick={onClick} className="drawer-link">
@@ -56,8 +57,14 @@ const Navbar = () => {
                         fontFamily: 'Outfit',
                         display: 'flex',
                         alignItems: 'center',
+                        gap: '10px',
                         whiteSpace: 'nowrap'
                     }}>
+                        <img
+                            src={mainLogo}
+                            alt="Swaply logo"
+                            style={{ width: '34px', height: '34px', objectFit: 'contain' }}
+                        />
                         Swaply<span style={{ color: 'var(--accent)' }}>.</span>
                     </Link>
 
