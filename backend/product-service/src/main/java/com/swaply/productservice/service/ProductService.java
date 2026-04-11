@@ -290,7 +290,9 @@ public class ProductService {
                 reorderedImages.add(image);
             }
 
-            product.setImages(reorderedImages);
+            List<ProductImage> managedImages = product.getImages();
+            managedImages.clear();
+            managedImages.addAll(reorderedImages);
         }
 
         product.setUpdatedAt(LocalDateTime.now());
