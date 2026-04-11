@@ -65,7 +65,7 @@ const Navbar = () => {
                             alt="Swaply logo"
                             style={{ width: '34px', height: '34px', objectFit: 'contain' }}
                         />
-                        Swaply<span style={{ color: 'var(--accent)' }}>.</span>
+                        <span style={{ color: 'var(--primary)' }}>Swaply<span style={{ color: 'var(--accent)' }}>.</span></span>
                     </Link>
 
                     {/* Desktop Icon & Menu Area */}

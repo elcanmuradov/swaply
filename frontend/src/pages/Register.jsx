@@ -10,6 +10,7 @@ const Register = () => {
     const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', token: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [warning, setWarning] = useState(null);
     const { login } = useContext(AuthContext);
     const navigate = useNavigate();
 
@@ -21,6 +22,7 @@ const Register = () => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setWarning(null);
         try {
             await api.post('/auth/send-code', { email: formData.email });
             setStep(2);
@@ -36,6 +38,7 @@ const Register = () => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setWarning(null);
         try {
             const response = await api.post('/auth/verify', { email: formData.email, token: formData.token });
             // Backend boolean qaytarır (və ya success: true)
@@ -56,6 +59,7 @@ const Register = () => {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        setWarning(null);
 
         if (formData.password.length < 8) {
             setError("Şifrə ən azı 8 simvol olmalıdır.");
@@ -79,7 +83,15 @@ const Register = () => {
             }
         } catch (err) {
             console.error("Qeydiyyat xətası:", err);
-            setError(err.response?.data?.message || "Qeydiyyat zamanı xəta baş verdi.");
+            const message = err.response?.data?.message || "Qeydiyyat zamanı xəta baş verdi.";
+
+            if (message.toLowerCase().includes('telefon nömrəsi qeydiyyatda var') || message.toLowerCase().includes('phone already exists')) {
+                setWarning('Telefon nömrəsi qeydiyyatda var');
+                setError(null);
+            } else {
+                setError(message);
+                setWarning(null);
+            }
         } finally {
             setLoading(false);
         }
@@ -212,6 +224,12 @@ const Register = () => {
                         }} />
                     ))}
                 </div>
+
+                {warning && (
+                    <div style={{ padding: '10px', backgroundColor: '#fff8e1', color: '#8a6d1d', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center', border: '1px solid #ffe08a' }}>
+                        {warning}
+                    </div>
+                )}
 
                 {error && (
                     <div style={{ padding: '10px', backgroundColor: '#ffebee', color: '#c62828', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.9rem', textAlign: 'center' }}>

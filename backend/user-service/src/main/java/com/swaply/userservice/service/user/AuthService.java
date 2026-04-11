@@ -43,6 +43,15 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest registerRequest) {
         log.info("Register request : {}", registerRequest);
+
+        if (userRepository.findByPhone(registerRequest.getPhone()) != null) {
+            throw new AuthException("Telefon nömrəsi qeydiyyatda var");
+        }
+
+        if (userRepository.findByEmail(registerRequest.getEmail()).isPresent()) {
+            throw new AuthException("Email artıq qeydiyyatdan keçib");
+        }
+
         User user = User.builder()
                 .name(registerRequest.getName())
                 .email(registerRequest.getEmail())
