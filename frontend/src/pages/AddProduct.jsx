@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Camera, MapPin, Tag, Info, Check, GripVertical, ArrowLeft, ArrowRight } from 'lucide-react';
@@ -11,6 +11,7 @@ const AddProduct = () => {
     const [loading, setLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState("");
     const [draggedIndex, setDraggedIndex] = useState(null);
+    const fileInputRef = useRef(null);
 
     const categories = [
         "Elektronika", "Geyim", "Ev & Bağ", "Uşaq aləmi", "İdman", "Avtomobillər",
@@ -58,6 +59,15 @@ const AddProduct = () => {
         e.target.value = '';
     };
 
+    const removeImage = (index) => {
+        setImages((prev) => prev.filter((_, i) => i !== index));
+        setDraggedIndex(null);
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
     const reorderImages = (fromIndex, toIndex) => {
         if (fromIndex === toIndex) return;
         setImages((prev) => {
@@ -86,6 +96,12 @@ const AddProduct = () => {
         const nextIndex = index + direction;
         if (nextIndex < 0 || nextIndex >= images.length) return;
         reorderImages(index, nextIndex);
+    };
+
+    const moveImageToPosition = (fromIndex, toPosition) => {
+        const targetIndex = Number(toPosition) - 1;
+        if (Number.isNaN(targetIndex) || targetIndex < 0 || targetIndex >= images.length) return;
+        reorderImages(fromIndex, targetIndex);
     };
 
     const handleChange = (e) => {
@@ -238,7 +254,30 @@ const AddProduct = () => {
                                     <div style={{ position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(17,62,33,0.9)', color: '#fff', borderRadius: '999px', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 700 }}>
                                         {idx + 1}
                                     </div>
-                                    <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: '4px' }}>
+                                    <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                        <select
+                                            value={idx + 1}
+                                            onChange={(e) => moveImageToPosition(idx, e.target.value)}
+                                            title="Sıra seç"
+                                            style={{
+                                                height: 24,
+                                                borderRadius: '999px',
+                                                border: 'none',
+                                                backgroundColor: 'rgba(255,255,255,0.95)',
+                                                padding: '0 8px',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 700,
+                                                color: '#333',
+                                                cursor: 'pointer',
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                                            }}
+                                        >
+                                            {images.map((_, positionIdx) => (
+                                                <option key={positionIdx} value={positionIdx + 1}>
+                                                    {positionIdx + 1}
+                                                </option>
+                                            ))}
+                                        </select>
                                         <button
                                             type="button"
                                             onClick={() => moveImage(idx, -1)}
@@ -263,7 +302,7 @@ const AddProduct = () => {
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
+                                        onClick={() => removeImage(idx)}
                                         style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(239,68,68,0.92)', color: 'white', border: 'none', borderRadius: '50%', width: 26, height: 26, cursor: 'pointer', fontSize: '12px', boxShadow: '0 4px 10px rgba(239,68,68,0.28)' }}
                                     >✕</button>
                                 </div>
@@ -283,7 +322,7 @@ const AddProduct = () => {
                                 }}>
                                     <PlusCircle size={30} />
                                     <span style={{ fontSize: '0.8rem', marginTop: '5px' }}>Əlavə et</span>
-                                    <input type="file" onChange={handleImageUpload} hidden multiple accept="image/*" />
+                                    <input ref={fileInputRef} type="file" onChange={handleImageUpload} hidden multiple accept="image/*" />
                                 </label>
                             )}
                         </div>

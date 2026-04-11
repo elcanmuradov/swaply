@@ -250,6 +250,49 @@ public class ProductService {
         Optional.ofNullable(request.getTitle()).ifPresent(product::setTitle);
         Optional.ofNullable(request.getIsNew()).ifPresent(product::setIsNew);
 
+        if (request.getImages() != null) {
+            List<ProductImage> currentImages = product.getImages() != null ? product.getImages() : new ArrayList<>();
+
+            Map<String, ProductImage> byImageUrl = currentImages.stream()
+                    .filter(img -> img.getImageUrl() != null)
+                    .collect(Collectors.toMap(ProductImage::getImageUrl, img -> img, (a, b) -> a));
+
+            Set<String> requestedUrls = request.getImages().stream()
+                    .map(UpdateProductRequest.ImageRequest::getImageUrl)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            List<String> removedPublicIds = currentImages.stream()
+                    .filter(img -> img.getImageUrl() != null && !requestedUrls.contains(img.getImageUrl()))
+                    .map(ProductImage::getPublicId)
+                    .filter(id -> id != null && !id.isBlank())
+                    .collect(Collectors.toList());
+
+            if (!removedPublicIds.isEmpty()) {
+                mediaClient.deleteImages(removedPublicIds);
+            }
+
+            List<ProductImage> reorderedImages = new ArrayList<>();
+            for (int i = 0; i < request.getImages().size(); i++) {
+                UpdateProductRequest.ImageRequest imageRequest = request.getImages().get(i);
+                if (imageRequest.getImageUrl() == null || imageRequest.getImageUrl().isBlank()) {
+                    continue;
+                }
+
+                ProductImage existing = byImageUrl.get(imageRequest.getImageUrl());
+                ProductImage image = existing != null ? existing : new ProductImage();
+
+                image.setImageUrl(imageRequest.getImageUrl());
+                image.setPublicId(imageRequest.getPublicId() != null ? imageRequest.getPublicId() : image.getPublicId());
+                image.setDisplayOrder(i);
+                image.setIsMain(i == 0);
+                image.setProduct(product);
+                reorderedImages.add(image);
+            }
+
+            product.setImages(reorderedImages);
+        }
+
         product.setUpdatedAt(LocalDateTime.now());
         productRepository.save(product);
         syncToElastic(product);
@@ -283,6 +326,16 @@ public class ProductService {
 
     public void syncToElastic(Product product) {
         try {
+            List<String> orderedImageUrls = product.getImages() == null
+                ? new ArrayList<>()
+                : product.getImages().stream()
+                    .sorted(Comparator.comparing(
+                        img -> img.getDisplayOrder() == null ? Integer.MAX_VALUE : img.getDisplayOrder()
+                    ))
+                    .map(ProductImage::getImageUrl)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
             ProductDocument doc = ProductDocument.builder()
                     .id(product.getId().toString())
                     .userId(product.getUserId() != null ? product.getUserId().toString() : null)
@@ -296,7 +349,7 @@ public class ProductService {
                     .isDelivery(product.getIsDelivery())
                     .createdAt(product.getCreatedAt() != null ? 
                         product.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : null)
-                    .imageUrls(product.getImages().stream().map(ProductImage::getImageUrl).collect(Collectors.toList()))
+                    .imageUrls(orderedImageUrls)
                     .build();
             elasticProductRepository.save(doc);
         } catch (Exception e) {

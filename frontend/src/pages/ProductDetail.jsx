@@ -17,6 +17,8 @@ const ProductDetail = () => {
 
     const actingUserId = user?.id || "00000000-0000-0000-0000-000000000000";
 
+    const toBoolean = (value) => value === true || value === 'true' || value === 1;
+
     useEffect(() => {
         const fetchProduct = async () => {
             try {
@@ -156,6 +158,9 @@ const ProductDetail = () => {
         return <div className="container" style={{ padding: '5rem 20px', textAlign: 'center' }}>Məhsul tapılmadı.</div>;
     }
 
+    const isNewProduct = toBoolean(product.isNew);
+    const hasDelivery = toBoolean(product.isDelivery);
+
     const images = product.imageUrls && product.imageUrls.length > 0
         ? product.imageUrls
         : ["https://via.placeholder.com/800x600?text=Şəkil+Yoxdur"];
@@ -248,10 +253,36 @@ const ProductDetail = () => {
                                 <Calendar size={18} /> <span>{new Date(product.createdAt).toLocaleDateString()}</span>
                             </div>
                             <div className="metadata-item">
-                                <Package size={18} /> <span>{product.isNew ? 'Yeni məhsul' : 'İşlənmiş məhsul'}</span>
+                                <Package size={18} />
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span>Yeni məhsuldur</span>
+                                    <span style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '999px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        backgroundColor: isNewProduct ? '#dcfce7' : '#f3f4f6',
+                                        color: isNewProduct ? '#166534' : '#6b7280'
+                                    }}>
+                                        {isNewProduct ? 'Bəli' : 'Xeyr'}
+                                    </span>
+                                </span>
                             </div>
                             <div className="metadata-item">
-                                <Truck size={18} /> <span>{product.isDelivery ? 'Çatdırılma var' : 'Çatdırılma yoxdur'}</span>
+                                <Truck size={18} />
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span>Çatdırılma var</span>
+                                    <span style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '999px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        backgroundColor: hasDelivery ? '#dcfce7' : '#f3f4f6',
+                                        color: hasDelivery ? '#166534' : '#6b7280'
+                                    }}>
+                                        {hasDelivery ? 'Bəli' : 'Xeyr'}
+                                    </span>
+                                </span>
                             </div>
                             <div className="metadata-item">
                                 <ShieldCheck size={18} /> <span>Təhlükəsiz alış-veriş</span>

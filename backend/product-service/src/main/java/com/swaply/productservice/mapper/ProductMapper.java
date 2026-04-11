@@ -8,6 +8,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +24,7 @@ public interface ProductMapper {
     default List<String> mapImages(Product product) {
         if (product.getImages() == null) return null;
         return product.getImages().stream()
+                .sorted(Comparator.comparing(img -> img.getDisplayOrder() == null ? Integer.MAX_VALUE : img.getDisplayOrder()))
                 .map(img -> img.getImageUrl())
                 .collect(Collectors.toList());
     }

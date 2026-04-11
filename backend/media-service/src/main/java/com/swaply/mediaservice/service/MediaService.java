@@ -6,8 +6,8 @@ package com.swaply.mediaservice.service;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.api.ApiResponse;
 import com.cloudinary.utils.ObjectUtils;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,14 +16,17 @@ import java.util.List;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class MediaService {
 
+    private static final Logger log = LoggerFactory.getLogger(MediaService.class);
+
     private final Cloudinary cloudinary;
+
+    public MediaService(Cloudinary cloudinary) {
+        this.cloudinary = cloudinary;
+    }
 
     public Map<String, Object> getUploadSignature(Map<String, Object> params) {
         long timestamp = System.currentTimeMillis() / 1000L;
@@ -44,14 +47,13 @@ public class MediaService {
         log.info("Uploading files to Cloudinary");
         List<Map<String, String>> results = new ArrayList<>();
 
-
-        files.parallelStream().forEach(file -> {
+        for (MultipartFile file : files) {
             try {
                 if (!file.isEmpty()) {
-                    Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+                    Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
                     results.add(Map.of(
-                            "url", uploadResult.get("secure_url").toString(),
-                            "publicId", uploadResult.get("public_id").toString()
+                            "url", String.valueOf(uploadResult.get("secure_url")),
+                            "publicId", String.valueOf(uploadResult.get("public_id"))
                     ));
                 }
             } catch (IOException e) {
@@ -60,9 +62,7 @@ public class MediaService {
                         "fileName", file.getOriginalFilename()
                 ));
             }
-
-
-        });
+        }
 
         log.info("Uploaded files to Cloudinary");
         return results;
@@ -71,10 +71,10 @@ public class MediaService {
     public Map<String, String> uploadFile(MultipartFile file) {
         try {
             if (!file.isEmpty()) {
-                Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+                Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
                 return Map.of(
-                        "url", uploadResult.get("secure_url").toString(),
-                        "publicId", uploadResult.get("public_id").toString()
+                        "url", String.valueOf(uploadResult.get("secure_url")),
+                        "publicId", String.valueOf(uploadResult.get("public_id"))
                 );
             }
         } catch (IOException e) {
@@ -98,15 +98,21 @@ public class MediaService {
                 }
 
                 ApiResponse resources = cloudinary.api().resources(options);
-                List<Map<String, String>> resourceList = (List<Map<String, String>>) resources.get("resources");
+                Object resourceObject = resources.get("resources");
+
+                if (!(resourceObject instanceof List<?> resourceList)) {
+                    break;
+                }
 
                 if (resourceList.isEmpty()) {
                     break;
                 }
 
-                List<String> publicIds = resourceList.stream()
-                        .map(resource -> resource.get("public_id"))
-                        .collect(Collectors.toList());
+                List<String> publicIds = new ArrayList<>();
+                for (Object resource : resourceList) {
+                    Object publicId = ((Map<?, ?>) resource).get("public_id");
+                    publicIds.add(String.valueOf(publicId));
+                }
 
                 cloudinary.api().deleteResources(publicIds, options);
 
