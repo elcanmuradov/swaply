@@ -76,13 +76,16 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms128m -Xmx256m"
+      - xpack.ml.enabled=false
+      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
+      - "node.store.allow_mmap=false"
     deploy:
       resources:
         limits:
           memory: 512M
     ports:
       - "127.0.0.1:9200:9200"
+    restart: unless-stopped
     volumes:
       - elastic-data:/usr/share/elasticsearch/data
     networks:
