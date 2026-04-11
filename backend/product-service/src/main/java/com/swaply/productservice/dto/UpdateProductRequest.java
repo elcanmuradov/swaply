@@ -26,14 +26,12 @@ public class UpdateProductRequest {
 
     private BigDecimal price;
 
-    @Builder.Default
-    private Boolean isNew = false;
+    private Boolean isNew;
 
     @NotNull(message = "Kategori gerekli")
     private Integer categoryId;
 
-    @Builder.Default
-    private Boolean isDelivery = false;
+    private Boolean isDelivery;
 
     private Integer cityId;
 
