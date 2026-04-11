@@ -8,6 +8,7 @@ import com.swaply.productservice.repository.elastic.ElasticProductRepository;
 import com.swaply.productservice.repository.jpa.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,7 @@ public class ProductImageAsyncService {
 
     @Async("productTaskExecutor")
     @Transactional
+    @CacheEvict(value = "products", allEntries = true)
     public void uploadProductImagesAsync(List<MultipartFile> files, UUID productId) {
         try {
             log.info("Starting background image upload for product: {}", productId);
