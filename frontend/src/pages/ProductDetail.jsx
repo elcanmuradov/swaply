@@ -227,7 +227,6 @@ const ProductDetail = () => {
                         <div className="product-price">{product.price} ₼</div>
 
                         <div className="action-buttons">
-                            <button className="btn-primary buy-btn">İndi Al</button>
                             <button 
                                 className={`icon-btn favorite ${isFavorited ? 'active' : ''}`} 
                                 onClick={toggleFavorite}
@@ -569,7 +568,7 @@ const ProductDetail = () => {
 
                 @media (max-width: 768px) {
                     .main-image-container { height: 350px; }
-                    .action-buttons { flex-direction: column; gap: 1rem; }
+                    .action-buttons { flex-direction: row; gap: 0.75rem; }
                     .buy-btn { width: 100%; order: 1; height: 56px; }
                     .thumbnail { width: 70px; height: 70px; }
                     .seller-card { flex-direction: column; text-align: center; gap: 1rem; }

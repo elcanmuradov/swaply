@@ -28,7 +28,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AdminService {
-    private final AdminRepository adminRepository;
     private final ChatClient chatClient;
     private final ProductClient productClient;
     private final UserRepository userRepository;

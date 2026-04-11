@@ -83,7 +83,7 @@ const Navbar = () => {
                                     <button onClick={() => { logout(); navigate('/') }} className="nav-icon-link" title="Çıxış"><LogOut size={21} /></button>
                                     <button className="btn-accent" onClick={() => navigate('/add-product')} style={{ padding: '8px 18px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600, marginLeft: '0.5rem' }}>
                                         <PlusCircle size={18} />
-                                        <span>Satış et</span>
+                                        <span><Plus size={20} />  Yeni elan</span>
                                     </button>
                                 </>
                             ) : (

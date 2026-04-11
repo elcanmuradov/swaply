@@ -5,9 +5,10 @@ import com.swaply.userservice.entity.User;
 import com.swaply.userservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -19,10 +20,18 @@ public class MediaStorageService {
     private final UserRepository userRepository;
 
     @Async
-    public void uploadProfilePhotoAsync(MultipartFile file, String userEmail) {
+    public void uploadProfilePhotoAsync(byte[] fileBytes, String originalFilename, String userEmail) {
         try {
             log.info("Starting background upload for user: {}", userEmail);
-            Map<String, String> uploadResult = mediaClient.upload(file).getData();
+
+            Resource resource = new ByteArrayResource(fileBytes) {
+                @Override
+                public String getFilename() {
+                    return originalFilename != null ? originalFilename : "profile.jpg";
+                }
+            };
+
+            Map<String, String> uploadResult = mediaClient.upload(resource).getData();
             if (uploadResult != null && uploadResult.containsKey("url")) {
                 User user = userRepository.findByEmail(userEmail).orElseThrow();
                 user.setProfileImageUrl(uploadResult.get("url"));

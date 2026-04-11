@@ -1,8 +1,8 @@
 package com.swaply.userservice.service.user;
 
+import com.swaply.userservice.client.ProductClient;
 import com.swaply.userservice.dto.user.ChangePasswordRequest;
 import com.swaply.userservice.dto.user.UserDto;
-import com.swaply.userservice.dto.user.update.ProfilePhotoRequest;
 import org.springframework.web.multipart.MultipartFile;
 import com.swaply.userservice.entity.User;
 import com.swaply.userservice.exception.AuthException;
@@ -24,7 +24,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
-
+    private final ProductClient productClient;
     public void changePassword(ChangePasswordRequest request, Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow(() -> new AuthException("User not found"));
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
@@ -65,13 +65,26 @@ public class UserService {
 
     public List<UUID> getUserFavorites(Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName()).orElseThrow(() -> new AuthException(authentication.getName() + " User not found"));
-        return user.getFavoritedProductsIds();
-
+        List<UUID> favorites = new ArrayList<>();
+        user.getFavoritedProductsIds().forEach((id) -> {
+            if(productClient.isActiveProduct(id).getData()) {
+                favorites.add(id);
+            }
+        });
+        return favorites;
     }
 
     private final MediaStorageService mediaStorageService;
 
     public void changeProfilePhoto(MultipartFile file, Authentication authentication) {
-        mediaStorageService.uploadProfilePhotoAsync(file, authentication.getName());
+        try {
+            mediaStorageService.uploadProfilePhotoAsync(
+                    file.getBytes(),
+                    file.getOriginalFilename(),
+                    authentication.getName()
+            );
+        } catch (Exception e) {
+            throw new AuthException("Profil şəkli oxunmadı");
+        }
     }
 }

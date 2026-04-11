@@ -278,6 +278,22 @@ const Profile = () => {
 
                 {/* Content Area */}
                 <div className="content-area" style={{ backgroundColor: '#fff', padding: '2rem', borderRadius: '0 0 8px 8px', border: '1px solid #eee', borderTop: 'none', minHeight: '400px' }}>
+                    {activeTab === 'elanlar' && activeSubTab === 'ACTIVE' && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                            <button
+                                onClick={() => navigate('/add-product')}
+                                style={{
+                                    backgroundColor: '#B38B59', color: '#fff', padding: '10px 18px',
+                                    borderRadius: '6px', fontWeight: 700, fontSize: '0.95rem',
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    transition: 'transform 0.2s'
+                                }}
+                            >
+                                <Plus size={18} /> Yeni elan
+                            </button>
+                        </div>
+                    )}
+
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={activeTab + activeSubTab}
@@ -294,19 +310,6 @@ const Profile = () => {
                                 ) : products.length === 0 ? (
                                     <div style={{ textAlign: 'center', padding: '3rem' }}>
                                         <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '2rem' }}>Bu bölmədə elan yoxdur</p>
-                                        {activeSubTab === 'ACTIVE' && (
-                                            <button
-                                                onClick={() => navigate('/add-product')}
-                                                style={{
-                                                    backgroundColor: '#7ed321', color: '#fff', padding: '12px 30px',
-                                                    borderRadius: '6px', fontWeight: 700, fontSize: '1rem',
-                                                    display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 4px 10px rgba(126, 211, 33, 0.3)',
-                                                    transition: 'transform 0.2s', margin: '0 auto'
-                                                }}
-                                            >
-                                                <Plus size={20} /> Yeni elan
-                                            </button>
-                                        )}
                                     </div>
                                 ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

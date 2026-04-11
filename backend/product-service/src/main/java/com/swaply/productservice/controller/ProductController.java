@@ -128,4 +128,9 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(productService.searchProducts(q)));
     }
 
+    @GetMapping("/product/isActive")
+    public ResponseEntity<ApiResponse<Boolean>> isActiveProduct(@RequestParam("uuid") UUID productId) {
+        return ResponseEntity.ok(ApiResponse.success(productService.isActiveProduct((productId))));
+    }
+
 }

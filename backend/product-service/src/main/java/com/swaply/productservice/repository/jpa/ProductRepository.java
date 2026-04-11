@@ -33,7 +33,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     Page<Product> getProductByUserId(UUID userId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"images"})
-    Page<Product> getProductsByCategory(ProductCategory category, Pageable pageable);
+    Page<Product> getProductsByCategoryAndStatus(ProductCategory category, ProductStatus status, Pageable pageable);
 
     @EntityGraph(attributePaths = {"images"})
     List<Product> findByStatusAndTitleContainingIgnoreCase(ProductStatus status, String title);

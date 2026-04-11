@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Camera, MapPin, Tag, Info, Check } from 'lucide-react';
+import { Camera, MapPin, Tag, Info, Check, GripVertical, ArrowLeft, ArrowRight } from 'lucide-react';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 
@@ -10,6 +10,7 @@ const AddProduct = () => {
     const [images, setImages] = useState([]); // { file, preview } objects
     const [loading, setLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState("");
+    const [draggedIndex, setDraggedIndex] = useState(null);
 
     const categories = [
         "Elektronika", "Geyim", "Ev & Bağ", "Uşaq aləmi", "İdman", "Avtomobillər",
@@ -52,6 +53,39 @@ const AddProduct = () => {
         }));
 
         setImages((prev) => [...prev, ...newItems]);
+
+        // Clear input value so the same file can be selected again after deletion.
+        e.target.value = '';
+    };
+
+    const reorderImages = (fromIndex, toIndex) => {
+        if (fromIndex === toIndex) return;
+        setImages((prev) => {
+            const next = [...prev];
+            const [moved] = next.splice(fromIndex, 1);
+            next.splice(toIndex, 0, moved);
+            return next;
+        });
+    };
+
+    const handleDragStart = (index) => {
+        setDraggedIndex(index);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+    };
+
+    const handleDrop = (dropIndex) => {
+        if (draggedIndex === null) return;
+        reorderImages(draggedIndex, dropIndex);
+        setDraggedIndex(null);
+    };
+
+    const moveImage = (index, direction) => {
+        const nextIndex = index + direction;
+        if (nextIndex < 0 || nextIndex >= images.length) return;
+        reorderImages(index, nextIndex);
     };
 
     const handleChange = (e) => {
@@ -178,14 +212,59 @@ const AddProduct = () => {
                         <label style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Camera size={18} /> Şəkillər (Maksimum 10)
                         </label>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginTop: '-0.25rem' }}>
+                            Şəkillər yükləndiyi sırada saxlanılır. İstəsəniz sürüşdürərək və ya oxlarla düzəldə bilərsiniz.
+                        </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '1rem' }}>
                             {images.map((img, idx) => (
-                                <div key={idx} style={{ position: 'relative', aspectRatio: '1', borderRadius: '8px', overflow: 'hidden' }}>
+                                <div
+                                    key={idx}
+                                    draggable
+                                    onDragStart={() => handleDragStart(idx)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={() => handleDrop(idx)}
+                                    style={{
+                                        position: 'relative',
+                                        aspectRatio: '1',
+                                        borderRadius: '12px',
+                                        overflow: 'hidden',
+                                        cursor: 'grab',
+                                        border: draggedIndex === idx ? '2px solid var(--accent)' : '1px solid rgba(0,0,0,0.08)',
+                                        boxShadow: draggedIndex === idx ? '0 10px 24px rgba(179, 139, 89, 0.18)' : '0 4px 12px rgba(0,0,0,0.05)',
+                                        backgroundColor: '#fff'
+                                    }}
+                                >
                                     <img src={img.preview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <div style={{ position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(17,62,33,0.9)', color: '#fff', borderRadius: '999px', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 700 }}>
+                                        {idx + 1}
+                                    </div>
+                                    <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: '4px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => moveImage(idx, -1)}
+                                            disabled={idx === 0}
+                                            title="Yuxarı"
+                                            style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: idx === 0 ? 'not-allowed' : 'pointer', opacity: idx === 0 ? 0.45 : 1 }}
+                                        >
+                                            <ArrowLeft size={14} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => moveImage(idx, 1)}
+                                            disabled={idx === images.length - 1}
+                                            title="Aşağı"
+                                            style={{ width: 24, height: 24, borderRadius: '50%', border: 'none', backgroundColor: 'rgba(255,255,255,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: idx === images.length - 1 ? 'not-allowed' : 'pointer', opacity: idx === images.length - 1 ? 0.45 : 1 }}
+                                        >
+                                            <ArrowRight size={14} />
+                                        </button>
+                                    </div>
+                                    <div style={{ position: 'absolute', bottom: 8, left: 8, backgroundColor: 'rgba(0,0,0,0.42)', color: '#fff', borderRadius: '999px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', backdropFilter: 'blur(6px)' }}>
+                                        <GripVertical size={12} /> Sürüşdür
+                                    </div>
                                     <button
                                         type="button"
                                         onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
-                                        style={{ position: 'absolute', top: 5, right: 5, backgroundColor: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', fontSize: '12px' }}
+                                        style={{ position: 'absolute', bottom: 8, right: 8, backgroundColor: 'rgba(239,68,68,0.92)', color: 'white', border: 'none', borderRadius: '50%', width: 26, height: 26, cursor: 'pointer', fontSize: '12px', boxShadow: '0 4px 10px rgba(239,68,68,0.28)' }}
                                     >✕</button>
                                 </div>
                             ))}

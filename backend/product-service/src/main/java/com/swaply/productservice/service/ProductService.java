@@ -176,7 +176,7 @@ public class ProductService {
 
     public PagedResponse<ProductDto> getProductsByCategory(ProductCategory category, Pageable pageable) {
         log.info("getting products by category {}, page: {}", category, pageable.getPageNumber());
-        Page<Product> page = productRepository.getProductsByCategory(category, pageable);
+        Page<Product> page = productRepository.getProductsByCategoryAndStatus(category,ProductStatus.ACTIVE, pageable);
         return mapToPagedResponse(page);
     }
 
@@ -316,5 +316,10 @@ public class ProductService {
         response.setTotalPages(page.getTotalPages());
         response.setLast(page.isLast());
         return response;
+    }
+
+    public Boolean isActiveProduct(UUID productId) {
+        Product product =  productRepository.findById(productId).orElseThrow(() -> new NotFoundException(PRODUCT_NOT_FOUND + productId));
+   return product.getStatus().equals(ProductStatus.ACTIVE);
     }
 }
