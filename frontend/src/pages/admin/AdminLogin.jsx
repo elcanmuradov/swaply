@@ -20,10 +20,11 @@ const AdminLogin = () => {
 
     // Redirect if already logged in as admin
     React.useEffect(() => {
-        if (user && (String(user.role).includes('ADMIN'))) {
-            window.location.href = '/admin';
+        const roleText = String(user?.role || user?.roles || user?.authorities || user?.userRole || '');
+        if (user && roleText.includes('ADMIN')) {
+            navigate('/admin', { replace: true });
         }
-    }, [user]);
+    }, [user, navigate]);
 
     const handleChange = (e) => {
         setCredentials(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -42,11 +43,11 @@ const AdminLogin = () => {
                 const parts = data.token.split('.');
                 if (parts.length === 3) {
                     const payload = JSON.parse(atob(parts[1]));
-                    const role = payload.role || payload.roles || '';
+                    const role = payload.role || payload.roles || payload.authorities || payload.userRole || '';
                     
                     if (String(role).includes('ADMIN')) {
                         login(data.token);
-                        window.location.href = '/admin'; // Hard refresh for clean layout
+                        navigate('/admin', { replace: true });
                     } else {
                         setError("Admin access required.");
                     }

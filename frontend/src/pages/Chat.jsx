@@ -579,7 +579,7 @@ const Chat = () => {
                                     />
                                 </div>
                                 <button
-                                    onClick={handleSendMessage}
+                                    onClick={() => handleSendMessage()}
                                     style={{ backgroundColor: 'var(--primary)', color: 'white', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
                                     <Send size={18} />
                                 </button>
