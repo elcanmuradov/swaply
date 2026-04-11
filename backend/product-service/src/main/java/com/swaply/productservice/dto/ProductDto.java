@@ -33,11 +33,11 @@ public class ProductDto implements Serializable {
 
     private Double price;
 
-    private boolean isNew;
+    private Boolean isNew;
 
     private ProductCategory category;
 
-    private boolean isDelivery;
+    private Boolean isDelivery;
 
     private Date createdAt;
 

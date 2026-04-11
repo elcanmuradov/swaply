@@ -67,6 +67,7 @@ public class User implements UserDetails {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
+
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
