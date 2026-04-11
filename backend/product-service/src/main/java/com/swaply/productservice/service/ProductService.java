@@ -23,7 +23,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -31,7 +30,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static com.swaply.productservice.utils.messages.Constants.PRODUCT_NOT_FOUND;
@@ -45,6 +43,7 @@ public class ProductService {
     private final UserClient userClient;
     private final MediaClient mediaClient;
     private final ElasticProductRepository elasticProductRepository;
+    private final ProductImageAsyncService productImageAsyncService;
 
 
     @CacheEvict(value = "products", allEntries = true)
@@ -63,10 +62,9 @@ public class ProductService {
         productRepository.save(product);
 
         if (files != null && !files.isEmpty()) {
-             uploadProductImagesAsync(files, product.getId());
+              productImageAsyncService.uploadProductImagesAsync(files, product.getId());
         }
-
-        syncToElastic(product);
+        productImageAsyncService.syncProductToElasticAsync(product.getId());
 
         return CreateProductResponse.builder()
                 .id(product.getId())
@@ -84,46 +82,6 @@ public class ProductService {
                 .images(new ArrayList<>())
                 .build();
     }
-
-
-    @Async
-    public void uploadProductImagesAsync(List<MultipartFile> files, UUID productId) {
-        try {
-            log.info("Starting background image upload for product: {}", productId);
-            var response = mediaClient.uploadMultipleFiles(files);
-
-            if (response != null && response.getData() != null) {
-                Product product = productRepository.findById(productId).orElseThrow();
-                var list = product.getImages();
-                List<Map<String, String>> uploadResults = response.getData();
-               AtomicInteger i = new AtomicInteger();
-                uploadResults.forEach(res -> {
-                    ProductImage image = new ProductImage();
-                    image.setImageUrl(res.get("url"));
-                    image.setPublicId(res.get("publicId"));
-                    image.setDisplayOrder(i.getAndIncrement());
-                    image.setIsMain(i.get() == 1);
-                    image.setProduct(product);
-                    list.add(image);
-                });
-                product.setImages(list);
-                productRepository.save(product);
-                syncToElastic(product);
-                log.info("Product images updated successfully for product: {}", productId);
-            }
-        } catch (Exception e) {
-            log.error("Error uploading images for product {}", productId);
-
-        }
-    }
-
-
-
-
-
-
-
-
 
 
     public List<ProductDto> getFavoriteProducts() {
