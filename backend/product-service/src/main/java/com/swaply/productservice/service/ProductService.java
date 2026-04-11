@@ -274,7 +274,7 @@ public class ProductService {
 
             List<ProductImage> reorderedImages = new ArrayList<>();
             for (int i = 0; i < request.getImages().size(); i++) {
-                CreateProductRequest.ImageRequest imageRequest = request.getImages().get(i);
+                UpdateProductRequest.ImageRequest imageRequest = request.getImages().get(i);
                 if (imageRequest.getImageUrl() == null || imageRequest.getImageUrl().isBlank()) {
                     continue;
                 }

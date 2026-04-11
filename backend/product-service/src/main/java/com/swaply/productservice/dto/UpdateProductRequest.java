@@ -1,6 +1,5 @@
 package com.swaply.productservice.dto;
 
-import com.swaply.productservice.dto.create.CreateProductRequest;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -36,7 +35,7 @@ public class UpdateProductRequest {
     private Integer cityId;
 
     @Builder.Default
-    private List<CreateProductRequest.ImageRequest> images = new ArrayList<>();
+    private List<ImageRequest> images = new ArrayList<>();
 
     @Data
     @NoArgsConstructor
