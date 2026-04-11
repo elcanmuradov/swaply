@@ -107,6 +107,18 @@ const Home = () => {
     }, [searchQuery]);
 
     useEffect(() => {
+        const optimisticProduct = location.state?.optimisticProduct;
+        if (!optimisticProduct) return;
+
+        setProducts((prev) => {
+            const exists = prev.some((p) => String(p.id) === String(optimisticProduct.id));
+            return exists ? prev : [optimisticProduct, ...prev];
+        });
+
+        navigate(`${location.pathname}${location.search}`, { replace: true, state: {} });
+    }, [location.state, location.pathname, location.search, navigate]);
+
+    useEffect(() => {
         const rawCache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
         cleanAndSetPreviewCache(rawCache);
     }, []);
@@ -278,13 +290,16 @@ const ListingCard = ({ product, previewCache }) => {
     const primaryImage = product.imageUrls && product.imageUrls.length > 0
         ? product.imageUrls[0]
         : previewImage;
+    const previewImages = product.imageUrls && product.imageUrls.length > 0
+        ? product.imageUrls
+        : (previewImage ? [previewImage] : []);
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -5 }}
-            onClick={() => navigate(`/product/${product.id}`)}
+            onClick={() => navigate(`/product/${product.id}`, { state: { previewImages } })}
             style={{
                 backgroundColor: 'var(--surface)',
                 borderRadius: 'var(--radius)',

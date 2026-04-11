@@ -202,19 +202,29 @@ const AddProduct = () => {
                 }
             });
 
-            const createdProductId = response?.data?.data?.id;
+            const createdProductId = response?.data?.data?.id || response?.data?.id;
             if (createdProductId && images.length > 0) {
                 const existingCache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
-                existingCache[createdProductId] = {
+                existingCache[String(createdProductId)] = {
                     urls: images.map((img) => img.preview).filter(Boolean),
                     expiresAt: Date.now() + 10 * 60 * 1000
                 };
                 sessionStorage.setItem(PRODUCT_PREVIEW_CACHE_KEY, JSON.stringify(existingCache));
             }
 
+            const optimisticProduct = {
+                id: String(createdProductId || `temp-${Date.now()}`),
+                title: formData.title,
+                price: parseFloat(formData.price),
+                city: cities[parseInt(formData.cityId)] || 'Bakı',
+                createdAt: new Date().toISOString(),
+                imageUrls: images.map((img) => img.preview).filter(Boolean),
+                __optimistic: true
+            };
+
             setLoadingMessage('Məhsul uğurla yaradıldı!');
             alert("Elan uğurla yerləşdirildi!");
-            navigate("/");
+            navigate("/", { state: { optimisticProduct } });
         } catch (error) {
             console.error('Xəta:', error);
             alert('Məhsul yaradılarkən xəta baş verdi: ' + (error.response?.data?.message || error.message));

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Share2, MapPin, Calendar, ShieldCheck, ChevronLeft, ChevronRight, MessageCircle, Package, Truck } from 'lucide-react';
 import api from '../api/axios';
@@ -10,6 +10,7 @@ const PRODUCT_PREVIEW_CACHE_KEY = 'productImagePreviewCache';
 const ProductDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [product, setProduct] = useState(null);
     const [seller, setSeller] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -20,6 +21,7 @@ const ProductDetail = () => {
     const actingUserId = user?.id || "00000000-0000-0000-0000-000000000000";
 
     const toBoolean = (value) => value === true || value === 'true' || value === 1;
+    const statePreviewImages = Array.isArray(location.state?.previewImages) ? location.state.previewImages : [];
 
     const getCachedPreviewImages = (productId) => {
         const cache = JSON.parse(sessionStorage.getItem(PRODUCT_PREVIEW_CACHE_KEY) || '{}');
@@ -185,6 +187,8 @@ const ProductDetail = () => {
     const cachedImages = getCachedPreviewImages(product.id);
     const images = product.imageUrls && product.imageUrls.length > 0
         ? product.imageUrls
+        : statePreviewImages.length > 0
+            ? statePreviewImages
         : cachedImages.length > 0
             ? cachedImages
             : ["https://via.placeholder.com/800x600?text=Şəkil+Yoxdur"];
