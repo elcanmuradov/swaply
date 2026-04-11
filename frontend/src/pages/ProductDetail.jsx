@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Share2, MapPin, Calendar, ShieldCheck, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
+import { Heart, Share2, MapPin, Calendar, ShieldCheck, ChevronLeft, ChevronRight, MessageCircle, Package, Truck } from 'lucide-react';
 import api from '../api/axios';
 import { AuthContext } from '../context/AuthContext';
 
@@ -246,6 +246,12 @@ const ProductDetail = () => {
                             </div>
                             <div className="metadata-item">
                                 <Calendar size={18} /> <span>{new Date(product.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <div className="metadata-item">
+                                <Package size={18} /> <span>{product.isNew ? 'Yeni məhsul' : 'İşlənmiş məhsul'}</span>
+                            </div>
+                            <div className="metadata-item">
+                                <Truck size={18} /> <span>{product.isDelivery ? 'Çatdırılma var' : 'Çatdırılma yoxdur'}</span>
                             </div>
                             <div className="metadata-item">
                                 <ShieldCheck size={18} /> <span>Təhlükəsiz alış-veriş</span>
